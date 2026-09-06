@@ -6,7 +6,13 @@ import { ExtractedWord } from "@/types";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const EXTRACTION_PROMPT = `Bu görseldeki İngilizce kelimeleri, varsa bağlı oldukları prepositions (edatlar) ile birlikte çıkar. Türkçe anlamlarını ve görselde geçen veya kelimeye uygun basit bir İngilizce örnek cümleyi analiz et. Yanıtı sadece ve strictly JSON array formatında döndür. Format: [{"word": "", "preposition": "", "meaning": "", "example_sentence": ""}]`;
+const EXTRACTION_PROMPT = `Bu görseldeki Fransızca kelimeleri çıkar. Kurallara KESİNLİKLE uy:
+
+1. "preposition" alanı: Kelime görselde bir edatla birlikte kullanılmışsa (örn. "penser à", "avoir besoin de", "s'intéresser à") bu edatı MUTLAKA yaz. Kelimenin yanında edat geçiyorsa bu alanı ASLA boş bırakma. Edat yoksa boş string ("") bırak.
+2. "meaning" alanı: Kelimenin Türkçe anlamını yaz.
+3. "example_sentence" alanı: SADECE ve KESİNLİKLE Fransızca bir örnek cümle yaz. İngilizce veya başka bir dilde örnek cümle YAZMA. Görselde kelimeyle birlikte bir örnek cümle varsa onu birebir kullan; yoksa kelimeye uygun basit, doğru dilbilgisiyle yazılmış yeni bir Fransızca cümle üret.
+
+Yanıtı sadece ve strictly JSON array formatında döndür, başka hiçbir açıklama ekleme. Format: [{"word": "", "preposition": "", "meaning": "", "example_sentence": ""}]`;
 
 /**
  * Gemini'nin bazen JSON'u ```json ... ``` gibi code fence içine
