@@ -1,7 +1,7 @@
 # Flashcard / Anki Klonu
 
 Next.js 14 (App Router) + Tailwind CSS + Supabase + Gemini 2.5 Flash OCR ile geliştirilmiş,
-fotoğraftan İngilizce kelime çıkaran ve SM-2 aralıklı tekrar algoritmasıyla çalışan flashcard uygulaması.
+fotoğraftan Fransızca kelime çıkaran ve SM-2 aralıklı tekrar algoritmasıyla çalışan flashcard uygulaması.
 
 ## Kurulum
 
