@@ -29,10 +29,40 @@ function extractJsonArray(rawText: string): ExtractedWord[] {
   return parsed as ExtractedWord[];
 }
 
+/**
+ * Ortam değişkenlerinden sırayla Gemini API anahtarlarını toplar.
+ * GEMINI_API_KEY zorunludur; GEMINI_API_KEY_2, GEMINI_API_KEY_3 ...
+ * şeklinde eklenen ek anahtarlar, birincisi kota (429) veya geçici
+ * kullanılamazlık (503) hatası verdiğinde otomatik yedek olarak denenir.
+ */
+function collectApiKeys(): string[] {
+  const keys: string[] = [];
+  if (process.env.GEMINI_API_KEY) keys.push(process.env.GEMINI_API_KEY);
+
+  let i = 2;
+  while (process.env[`GEMINI_API_KEY_${i}`]) {
+    keys.push(process.env[`GEMINI_API_KEY_${i}`] as string);
+    i += 1;
+  }
+
+  return keys;
+}
+
+/** Hata mesajından Gemini'nin kota/yoğunluk hatası verip vermediğini anlar. */
+function isRetryableError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return (
+    message.includes("429") ||
+    message.includes("503") ||
+    message.includes("RESOURCE_EXHAUSTED") ||
+    message.includes("UNAVAILABLE")
+  );
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
+    const apiKeys = collectApiKeys();
+    if (apiKeys.length === 0) {
       return NextResponse.json(
         { error: "GEMINI_API_KEY ortam değişkeni tanımlı değil." },
         { status: 500 }
@@ -61,32 +91,58 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString("base64");
 
-    // Gemini istemcisini oluştur
-    const ai = new GoogleGenAI({ apiKey });
+    // Anahtarları sırayla dene: biri kota/yoğunluk hatası verirse bir sonrakine geç
+    let rawText: string | undefined;
+    let lastError: unknown = null;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { text: EXTRACTION_PROMPT },
+    for (let keyIndex = 0; keyIndex < apiKeys.length; keyIndex++) {
+      const ai = new GoogleGenAI({ apiKey: apiKeys[keyIndex] });
+
+      try {
+        const response = await ai.models.generateContent({
+          model: "gemini-3.6-flash",
+          contents: [
             {
-              inlineData: {
-                mimeType: file.type,
-                data: base64Image,
-              },
+              role: "user",
+              parts: [
+                { text: EXTRACTION_PROMPT },
+                {
+                  inlineData: {
+                    mimeType: file.type,
+                    data: base64Image,
+                  },
+                },
+              ],
             },
           ],
-        },
-      ],
-      config: {
-        responseMimeType: "application/json",
-        temperature: 0.2,
-      },
-    });
+          config: {
+            responseMimeType: "application/json",
+            temperature: 0.2,
+          },
+        });
 
-    const rawText = response.text;
+        rawText = response.text;
+        lastError = null;
+        break; // başarılı oldu, döngüden çık
+      } catch (err) {
+        lastError = err;
+        const hasNextKey = keyIndex < apiKeys.length - 1;
+
+        if (isRetryableError(err) && hasNextKey) {
+          console.warn(
+            `Gemini anahtarı #${keyIndex + 1} kota/yoğunluk hatası verdi, sıradaki anahtara geçiliyor.`
+          );
+          continue; // sıradaki anahtarı dene
+        }
+
+        // Yeniden denenemeyecek bir hata ya da denenecek anahtar kalmadı
+        throw err;
+      }
+    }
+
+    if (lastError) {
+      throw lastError;
+    }
 
     if (!rawText) {
       return NextResponse.json(
