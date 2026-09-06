@@ -1,61 +1,117 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { calculateSM2 } from "@/lib/sm2";
-import { Flashcard, SM2Rating } from "@/types";
+import { Flashcard, SelfAssessment, StudyQuestion } from "@/types";
 import FlashCardView from "@/components/FlashCardView";
+import {
+  buildDailyPackage,
+  buildQuestion,
+  interleaveDailyPackage,
+  mapAssessmentToRating,
+  computeWeakWordUpdate,
+  deriveLearningStage,
+  deriveCardStatus,
+  LEARNING_STAGE_LABELS,
+  CARD_STATUS_LABELS,
+} from "@/lib/studyEngine";
+
+type Phase = "loading" | "empty" | "recall_front" | "recall_back" | "mcq_pending" | "mcq_answered" | "done";
+
+const STATUS_BADGE_CLASSES: Record<string, string> = {
+  new: "bg-slate-100 text-slate-600",
+  due: "bg-amber-100 text-amber-700",
+  overdue: "bg-red-100 text-red-700",
+  weak: "bg-orange-100 text-orange-700",
+  strong: "bg-green-100 text-green-700",
+};
 
 export default function StudyPage() {
+  const [allCards, setAllCards] = useState<Flashcard[]>([]);
   const [queue, setQueue] = useState<Flashcard[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isFlipped, setIsFlipped] = useState(false);
+  const [currentQuestion, setCurrentQuestion] = useState<StudyQuestion | null>(null);
+  const [phase, setPhase] = useState<Phase>("loading");
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [reviewedCount, setReviewedCount] = useState(0);
+  const [correctCount, setCorrectCount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [packageSummary, setPackageSummary] = useState({ due: 0, overdue: 0, weak: 0, fresh: 0 });
 
-  const fetchDueCards = useCallback(async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("flashcards")
-      .select("*")
-      .lte("next_review_date", new Date().toISOString())
-      .order("next_review_date", { ascending: true });
+  const loadCards = useCallback(async () => {
+    setPhase("loading");
+    const { data, error } = await supabase.from("flashcards").select("*");
 
-    if (!error && data) {
-      setQueue(data as Flashcard[]);
+    if (error || !data) {
+      setPhase("empty");
+      return;
     }
-    setLoading(false);
+
+    const cards = data as Flashcard[];
+    setAllCards(cards);
+
+    const pkg = buildDailyPackage(cards);
+    setPackageSummary({
+      due: pkg.dueCards.length,
+      overdue: pkg.overdueCards.length,
+      weak: pkg.weakCards.length,
+      fresh: pkg.newCards.length,
+    });
+
+    const interleaved = interleaveDailyPackage(pkg);
+    setQueue(interleaved);
+
+    if (interleaved.length === 0) {
+      setPhase("empty");
+    } else {
+      const first = interleaved[0];
+      const question = buildQuestion(first, cards);
+      setCurrentQuestion(question);
+      setPhase(question.type === "recall" ? "recall_front" : "mcq_pending");
+    }
   }, []);
 
   useEffect(() => {
-    fetchDueCards();
-  }, [fetchDueCards]);
+    loadCards();
+  }, [loadCards]);
 
-  const currentCard = queue[0];
+  const progressLabel = useMemo(() => {
+    const total = queue.length + reviewedCount;
+    return `${reviewedCount} / ${total}`;
+  }, [queue.length, reviewedCount]);
 
-  async function handleRate(rating: SM2Rating) {
-    if (!currentCard || submitting) return;
+  async function finalizeReview(card: Flashcard, assessment: SelfAssessment) {
+    if (submitting) return;
     setSubmitting(true);
 
-    const result = calculateSM2(
+    const rating = mapAssessmentToRating(assessment);
+
+    const sm2Result = calculateSM2(
       {
-        repetitions: currentCard.repetitions,
-        interval: currentCard.interval,
-        ease_factor: currentCard.ease_factor,
+        repetitions: card.repetitions,
+        interval: card.interval,
+        ease_factor: card.ease_factor,
       },
       rating
     );
 
+    const weakUpdate = computeWeakWordUpdate(card, assessment);
+
     const { error } = await supabase
       .from("flashcards")
       .update({
-        repetitions: result.repetitions,
-        interval: result.interval,
-        ease_factor: result.ease_factor,
-        next_review_date: result.next_review_date,
+        repetitions: sm2Result.repetitions,
+        interval: sm2Result.interval,
+        ease_factor: sm2Result.ease_factor,
+        next_review_date: sm2Result.next_review_date,
+        correct_count: weakUpdate.correct_count,
+        incorrect_count: weakUpdate.incorrect_count,
+        struggle_count: weakUpdate.struggle_count,
+        is_weak: weakUpdate.is_weak,
+        last_reviewed_at: new Date().toISOString(),
       })
-      .eq("id", currentCard.id);
+      .eq("id", card.id);
 
     if (error) {
       alert("Kart güncellenirken hata oluştu: " + error.message);
@@ -63,13 +119,45 @@ export default function StudyPage() {
       return;
     }
 
+    if (assessment !== "forgot") {
+      setCorrectCount((c) => c + 1);
+    }
     setReviewedCount((c) => c + 1);
-    setQueue((q) => q.slice(1));
-    setIsFlipped(false);
+
+    const nextQueue = queue.slice(1);
+    setQueue(nextQueue);
+    setSelectedOption(null);
+
+    if (nextQueue.length === 0) {
+      setPhase("done");
+      setCurrentQuestion(null);
+    } else {
+      const nextCard = nextQueue[0];
+      const nextQuestion = buildQuestion(nextCard, allCards);
+      setCurrentQuestion(nextQuestion);
+      setPhase(nextQuestion.type === "recall" ? "recall_front" : "mcq_pending");
+    }
+
     setSubmitting(false);
   }
 
-  if (loading) {
+  function handleShowAnswer() {
+    setPhase("recall_back");
+  }
+
+  function handleMcqSelect(option: string) {
+    if (phase !== "mcq_pending") return;
+    setSelectedOption(option);
+    setPhase("mcq_answered");
+  }
+
+  function handleMcqContinue() {
+    if (!currentQuestion) return;
+    const isCorrect = selectedOption === currentQuestion.correctAnswer;
+    finalizeReview(currentQuestion.card, isCorrect ? "recalled" : "forgot");
+  }
+
+  if (phase === "loading") {
     return (
       <main className="min-h-screen bg-slate-50 flex items-center justify-center">
         <p className="text-slate-400">Yükleniyor...</p>
@@ -87,58 +175,250 @@ export default function StudyPage() {
           </Link>
         </div>
 
-        {!currentCard ? (
+        {phase !== "empty" && phase !== "done" && (
+          <div className="flex items-center justify-between text-xs text-slate-400">
+            <span>
+              Bugünkü paket: {packageSummary.overdue} gecikmiş · {packageSummary.weak} zayıf ·{" "}
+              {packageSummary.due} tekrar · {packageSummary.fresh} yeni
+            </span>
+            <span className="font-semibold text-slate-600">{progressLabel}</span>
+          </div>
+        )}
+
+        {phase === "empty" && (
           <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-12 text-center space-y-3">
             <p className="text-4xl">🎉</p>
             <p className="text-lg font-semibold text-slate-800">
               Bugünlük tekrar edilecek kart kalmadı!
             </p>
             <p className="text-slate-500 text-sm">
-              {reviewedCount > 0
-                ? `Bu oturumda ${reviewedCount} kart tekrar ettin.`
-                : "Yeni kartlar yüklemek için 'Kart Yükle' sayfasına git."}
+              Yeni kartlar yüklemek için &apos;Kart Yükle&apos; sayfasına git.
             </p>
           </div>
-        ) : (
-          <>
-            <p className="text-center text-sm text-slate-400">
-              Kalan kart: <span className="font-semibold text-slate-600">{queue.length}</span>
-            </p>
-
-            <FlashCardView
-              card={currentCard}
-              isFlipped={isFlipped}
-              onFlip={() => setIsFlipped((f) => !f)}
-            />
-
-            {isFlipped && (
-              <div className="grid grid-cols-3 gap-3 max-w-xl mx-auto">
-                <button
-                  onClick={() => handleRate(1)}
-                  disabled={submitting}
-                  className="rounded-xl bg-red-100 text-red-700 font-semibold py-3 hover:bg-red-200 transition-colors disabled:opacity-50"
-                >
-                  😖 Zor
-                </button>
-                <button
-                  onClick={() => handleRate(3)}
-                  disabled={submitting}
-                  className="rounded-xl bg-amber-100 text-amber-700 font-semibold py-3 hover:bg-amber-200 transition-colors disabled:opacity-50"
-                >
-                  🙂 Orta
-                </button>
-                <button
-                  onClick={() => handleRate(5)}
-                  disabled={submitting}
-                  className="rounded-xl bg-green-100 text-green-700 font-semibold py-3 hover:bg-green-200 transition-colors disabled:opacity-50"
-                >
-                  😄 Kolay
-                </button>
-              </div>
-            )}
-          </>
         )}
+
+        {phase === "done" && (
+          <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-12 text-center space-y-3">
+            <p className="text-4xl">✅</p>
+            <p className="text-lg font-semibold text-slate-800">Bugünkü paketi bitirdin!</p>
+            <p className="text-slate-500 text-sm">
+              {reviewedCount} kelime tekrar ettin, {correctCount} tanesini doğru bildin (%
+              {reviewedCount > 0 ? Math.round((correctCount / reviewedCount) * 100) : 0}
+              ).
+            </p>
+          </div>
+        )}
+
+        {currentQuestion && (phase === "recall_front" || phase === "recall_back") && (
+          <RecallView
+            question={currentQuestion}
+            phase={phase}
+            submitting={submitting}
+            onShowAnswer={handleShowAnswer}
+            onAssess={(assessment) => finalizeReview(currentQuestion.card, assessment)}
+          />
+        )}
+
+        {currentQuestion &&
+          (phase === "mcq_pending" || phase === "mcq_answered") &&
+          currentQuestion.options && (
+            <McqView
+              question={currentQuestion}
+              phase={phase}
+              selectedOption={selectedOption}
+              submitting={submitting}
+              onSelect={handleMcqSelect}
+              onContinue={handleMcqContinue}
+            />
+          )}
       </div>
     </main>
+  );
+}
+
+// ============================================================
+// RECALL — kelimeyi zihinden hatırla, sonra cevabı gör, öz-değerlendir
+// ============================================================
+function RecallView({
+  question,
+  phase,
+  submitting,
+  onShowAnswer,
+  onAssess,
+}: {
+  question: StudyQuestion;
+  phase: Phase;
+  submitting: boolean;
+  onShowAnswer: () => void;
+  onAssess: (assessment: SelfAssessment) => void;
+}) {
+  const stage = deriveLearningStage(question.card);
+  const status = deriveCardStatus(question.card);
+
+  return (
+    <div className="space-y-4">
+      <StatusBadges stage={stage} status={status} />
+
+      <FlashCardView
+        card={question.card}
+        isFlipped={phase === "recall_back"}
+        onFlip={phase === "recall_front" ? onShowAnswer : () => {}}
+      />
+
+      {phase === "recall_front" && (
+        <p className="text-center text-sm text-slate-400">
+          Cevabı zihninden hatırlamaya çalış, sonra karta tıkla.
+        </p>
+      )}
+
+      {phase === "recall_back" && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-xl mx-auto">
+          <button
+            onClick={() => onAssess("forgot")}
+            disabled={submitting}
+            className="rounded-xl bg-red-100 text-red-700 font-semibold py-3 hover:bg-red-200 transition-colors disabled:opacity-50"
+          >
+            😖 Unuttum
+          </button>
+          <button
+            onClick={() => onAssess("struggled")}
+            disabled={submitting}
+            className="rounded-xl bg-orange-100 text-orange-700 font-semibold py-3 hover:bg-orange-200 transition-colors disabled:opacity-50"
+          >
+            😕 Zorlandım
+          </button>
+          <button
+            onClick={() => onAssess("recalled")}
+            disabled={submitting}
+            className="rounded-xl bg-amber-100 text-amber-700 font-semibold py-3 hover:bg-amber-200 transition-colors disabled:opacity-50"
+          >
+            🙂 Hatırladım
+          </button>
+          <button
+            onClick={() => onAssess("easy")}
+            disabled={submitting}
+            className="rounded-xl bg-green-100 text-green-700 font-semibold py-3 hover:bg-green-200 transition-colors disabled:opacity-50"
+          >
+            😄 Çok kolaydı
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// MCQ / FILL BLANK — çoktan seçmeli soru görünümü
+// ============================================================
+function McqView({
+  question,
+  phase,
+  selectedOption,
+  submitting,
+  onSelect,
+  onContinue,
+}: {
+  question: StudyQuestion;
+  phase: Phase;
+  selectedOption: string | null;
+  submitting: boolean;
+  onSelect: (option: string) => void;
+  onContinue: () => void;
+}) {
+  const stage = deriveLearningStage(question.card);
+  const status = deriveCardStatus(question.card);
+  const answered = phase === "mcq_answered";
+
+  const promptText =
+    question.type === "mcq_fr_to_tr"
+      ? "Bu kelimenin Türkçe anlamı nedir?"
+      : question.type === "mcq_tr_to_fr"
+        ? "Bu anlama gelen Fransızca kelime hangisi?"
+        : "Boşluğu doğru kelimeyle tamamla:";
+
+  const promptHeading =
+    question.type === "mcq_fr_to_tr"
+      ? question.card.word
+      : question.type === "mcq_tr_to_fr"
+        ? question.card.meaning
+        : question.blankedSentence;
+
+  return (
+    <div className="space-y-6">
+      <StatusBadges stage={stage} status={status} />
+
+      <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-8 text-center space-y-3">
+        <p className="text-xs uppercase tracking-widest text-slate-400 font-medium">
+          {promptText}
+        </p>
+        <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">{promptHeading}</h2>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl mx-auto">
+        {question.options?.map((option) => {
+          const isCorrect = option === question.correctAnswer;
+          const isSelected = option === selectedOption;
+
+          let classes =
+            "rounded-xl border px-4 py-3 text-left font-medium transition-colors ";
+          if (!answered) {
+            classes += "border-slate-200 bg-white hover:border-indigo-400 hover:bg-indigo-50";
+          } else if (isCorrect) {
+            classes += "border-green-400 bg-green-50 text-green-700";
+          } else if (isSelected && !isCorrect) {
+            classes += "border-red-400 bg-red-50 text-red-700";
+          } else {
+            classes += "border-slate-200 bg-white opacity-50";
+          }
+
+          return (
+            <button
+              key={option}
+              onClick={() => onSelect(option)}
+              disabled={answered}
+              className={classes}
+            >
+              {option}
+            </button>
+          );
+        })}
+      </div>
+
+      {answered && (
+        <div className="max-w-xl mx-auto space-y-3">
+          <p
+            className={`text-center text-sm font-medium ${
+              selectedOption === question.correctAnswer ? "text-green-600" : "text-red-600"
+            }`}
+          >
+            {selectedOption === question.correctAnswer
+              ? "✅ Doğru!"
+              : `❌ Yanlış — doğru cevap: ${question.correctAnswer}`}
+          </p>
+          <button
+            onClick={onContinue}
+            disabled={submitting}
+            className="w-full rounded-xl bg-indigo-600 text-white font-medium py-3 hover:bg-indigo-700 transition-colors disabled:opacity-60"
+          >
+            Sonraki Kelime →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatusBadges({ stage, status }: { stage: string; status: string }) {
+  return (
+    <div className="flex items-center justify-center gap-2">
+      <span className="text-xs font-medium px-3 py-1 rounded-full bg-indigo-50 text-indigo-600">
+        {LEARNING_STAGE_LABELS[stage as keyof typeof LEARNING_STAGE_LABELS]}
+      </span>
+      <span
+        className={`text-xs font-medium px-3 py-1 rounded-full ${STATUS_BADGE_CLASSES[status] ?? "bg-slate-100 text-slate-600"}`}
+      >
+        {CARD_STATUS_LABELS[status as keyof typeof CARD_STATUS_LABELS]}
+      </span>
+    </div>
   );
 }
