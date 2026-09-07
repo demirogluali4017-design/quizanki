@@ -6,7 +6,7 @@ import { ExtractedWord } from "@/types";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const EXTRACTION_PROMPT = `Bu görseldeki Fransızca kelimeleri çıkar. Kurallara KESİNLİKLE uy:
+const EXTRACTION_PROMPT = `Bu görsel(ler)deki Fransızca kelimeleri çıkar. Birden fazla görsel verildiyse HEPSİNİ işle ve TEK bir birleşik JSON array olarak döndür (görseller ayrı sayfalar olabilir, sırayla işle). Kurallara KESİNLİKLE uy:
 
 1. "preposition" alanı: Kelimenin (özellikle fiillerin) görselde geçen TÜM edat kalıplarını EKSİKSİZ ve BİREBİR yaz.
    - Görselde "qch" (quelque chose) veya "qn" (quelqu'un) gibi kısaltmalar varsa bunları da kalıba dahil et, çıkarma. Örnek: "penser à qn/qch" görüldüyse preposition alanına tam olarak "à qn/qch" yaz, sadece "à" yazma.
@@ -14,6 +14,7 @@ const EXTRACTION_PROMPT = `Bu görseldeki Fransızca kelimeleri çıkar. Kuralla
    - Kelimenin yanında edat geçiyorsa bu alanı ASLA boş bırakma ve ASLA kısaltma; edat yoksa boş string ("") bırak.
 2. "meaning" alanı: Kelimenin Türkçe anlamını yaz.
 3. "example_sentence" alanı: SADECE ve KESİNLİKLE Fransızca bir örnek cümle yaz. İngilizce veya başka bir dilde örnek cümle YAZMA. Görselde kelimeyle birlikte bir örnek cümle varsa onu birebir kullan; yoksa kelimeye uygun basit, doğru dilbilgisiyle yazılmış yeni bir Fransızca cümle üret.
+4. Aynı kelime birden fazla görselde tekrar geçiyorsa SADECE BİR KEZ ekle (tekrar eden kaydı çıkarma).
 
 Yanıtı sadece ve strictly JSON array formatında döndür, başka hiçbir açıklama ekleme. Format: [{"word": "", "preposition": "", "meaning": "", "example_sentence": ""}]`;
 
@@ -79,26 +80,46 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData();
-    const file = formData.get("image") as File | null;
+    const files = formData.getAll("images") as File[];
 
-    if (!file) {
+    if (!files || files.length === 0) {
       return NextResponse.json(
-        { error: "Görsel dosyası bulunamadı ('image' alanı gerekli)." },
+        { error: "Görsel dosyası bulunamadı ('images' alanı gerekli)." },
+        { status: 400 }
+      );
+    }
+
+    const MAX_IMAGES = 3;
+    if (files.length > MAX_IMAGES) {
+      return NextResponse.json(
+        { error: `En fazla ${MAX_IMAGES} görsel birden yükleyebilirsin.` },
         { status: 400 }
       );
     }
 
     const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
-    if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json(
-        { error: "Sadece JPG/PNG formatları destekleniyor." },
-        { status: 400 }
-      );
+    for (const file of files) {
+      if (!allowedTypes.includes(file.type)) {
+        return NextResponse.json(
+          { error: "Sadece JPG/PNG formatları destekleniyor." },
+          { status: 400 }
+        );
+      }
     }
 
-    // Dosyayı base64'e çevir
-    const arrayBuffer = await file.arrayBuffer();
-    const base64Image = Buffer.from(arrayBuffer).toString("base64");
+    // Dosyaları base64'e çevir
+    const imageParts = await Promise.all(
+      files.map(async (file) => {
+        const arrayBuffer = await file.arrayBuffer();
+        const base64 = Buffer.from(arrayBuffer).toString("base64");
+        return {
+          inlineData: {
+            mimeType: file.type,
+            data: base64,
+          },
+        };
+      })
+    );
 
     // Anahtarları sırayla dene: biri kota/yoğunluk hatası verirse bir sonrakine geç
     let rawText: string | undefined;
@@ -113,15 +134,7 @@ export async function POST(request: NextRequest) {
           contents: [
             {
               role: "user",
-              parts: [
-                { text: EXTRACTION_PROMPT },
-                {
-                  inlineData: {
-                    mimeType: file.type,
-                    data: base64Image,
-                  },
-                },
-              ],
+              parts: [{ text: EXTRACTION_PROMPT }, ...imageParts],
             },
           ],
           config: {

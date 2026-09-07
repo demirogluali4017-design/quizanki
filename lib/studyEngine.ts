@@ -391,3 +391,38 @@ export function buildQuestion(card: Flashcard, pool: Flashcard[]): StudyQuestion
 
   return { type: "recall", card };
 }
+
+// ============================================================
+// 9) TEST MODU — SM-2'yi hiç etkilemeyen, her zaman cevaplanabilir soru üretir
+// ============================================================
+// "Test" modu için: her zaman mcq_fr_to_tr / mcq_tr_to_fr / fill_blank
+// döndürür, ASLA "recall" döndürmez (çünkü test modunda otomatik
+// doğru/yanlış değerlendirmesi gerekiyor). Bu fonksiyon SM-2 durumuna
+// bakmaz, sadece havuzdan rastgele bir tip seçer.
+export function buildTestQuestion(card: Flashcard, pool: Flashcard[]): StudyQuestion {
+  const candidateTypes: QuestionType[] = ["mcq_fr_to_tr", "mcq_tr_to_fr"];
+  if (card.example_sentence) candidateTypes.push("fill_blank", "fill_blank"); // biraz daha olası yap
+
+  const type = candidateTypes[Math.floor(Math.random() * candidateTypes.length)];
+
+  if (type === "fill_blank") {
+    const fillBlank = buildFillBlankQuestion(card, pool);
+    if (fillBlank) return fillBlank;
+  }
+
+  if (type === "mcq_tr_to_fr") {
+    return {
+      type,
+      card,
+      options: buildMcqOptions(card, pool, "word"),
+      correctAnswer: card.word,
+    };
+  }
+
+  return {
+    type: "mcq_fr_to_tr",
+    card,
+    options: buildMcqOptions(card, pool, "meaning"),
+    correctAnswer: card.meaning,
+  };
+}
