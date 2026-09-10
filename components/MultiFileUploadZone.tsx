@@ -64,7 +64,7 @@ export default function MultiFileUploadZone({ onFilesChanged, disabled }: MultiF
               <img
                 src={p.url}
                 alt={`Sayfa ${i + 1}`}
-                className="w-full h-32 object-cover rounded-lg border border-slate-200"
+                className="w-full h-32 object-cover rounded-lg border border-slate-200 dark:border-slate-700"
               />
               <button
                 type="button"
@@ -97,8 +97,8 @@ export default function MultiFileUploadZone({ onFilesChanged, disabled }: MultiF
           }}
           onClick={() => !disabled && inputRef.current?.click()}
           className={`flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-8 text-center cursor-pointer transition-colors
-            ${isDragging ? "border-indigo-500 bg-indigo-50" : "border-slate-300 bg-slate-50"}
-            ${disabled ? "opacity-60 cursor-not-allowed" : "hover:border-indigo-400 hover:bg-indigo-50/50"}`}
+            ${isDragging ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950" : "border-slate-300 bg-slate-50 dark:bg-slate-950"}
+            ${disabled ? "opacity-60 cursor-not-allowed" : "hover:border-indigo-400 hover:bg-indigo-50 dark:bg-indigo-950/50"}`}
         >
           <input
             ref={inputRef}
@@ -112,7 +112,7 @@ export default function MultiFileUploadZone({ onFilesChanged, disabled }: MultiF
               e.target.value = "";
             }}
           />
-          <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-10 h-10 text-slate-400 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -120,12 +120,12 @@ export default function MultiFileUploadZone({ onFilesChanged, disabled }: MultiF
               d="M12 16.5V9m0 0l-3.5 3.5M12 9l3.5 3.5M6 20.25h12A2.25 2.25 0 0020.25 18v-7.5A2.25 2.25 0 0018 8.25h-1.5l-1.06-2.12A2.25 2.25 0 0013.44 5h-2.88a2.25 2.25 0 00-2.01 1.13L7.5 8.25H6A2.25 2.25 0 003.75 10.5V18A2.25 2.25 0 006 20.25z"
             />
           </svg>
-          <p className="text-slate-600 font-medium text-sm">
+          <p className="text-slate-600 dark:text-slate-300 font-medium text-sm">
             {previews.length === 0
               ? "Fotoğraf(lar)ı sürükle veya tıklayarak seç"
               : `Daha fazla ekle (${MAX_FILES - previews.length} kaldı)`}
           </p>
-          <p className="text-xs text-slate-400">En fazla {MAX_FILES} sayfa, JPG/PNG</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">En fazla {MAX_FILES} sayfa, JPG/PNG</p>
         </div>
       )}
     </div>

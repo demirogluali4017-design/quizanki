@@ -67,10 +67,10 @@ export default function WordsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-12">
+    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 px-6 py-12">
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900">📋 Tüm Kelimeler</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">📋 Tüm Kelimeler</h1>
           <Link href="/" className="text-sm text-indigo-600 hover:underline">
             ← Ana sayfaya dön
           </Link>
@@ -96,12 +96,12 @@ export default function WordsPage() {
           placeholder="Kelime, anlam veya preposition ara..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
         />
 
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
           <table className="w-full text-sm">
-            <thead className="bg-slate-100 text-slate-500 text-left">
+            <thead className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 text-left">
               <tr>
                 <th className="px-4 py-3 font-medium">Kelime</th>
                 <th className="px-4 py-3 font-medium">Preposition</th>
@@ -112,16 +112,16 @@ export default function WordsPage() {
                 <th className="px-4 py-3 font-medium"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center text-slate-400">
+                  <td colSpan={7} className="px-4 py-6 text-center text-slate-400 dark:text-slate-500">
                     Yükleniyor...
                   </td>
                 </tr>
               ) : filteredWords.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center text-slate-400">
+                  <td colSpan={7} className="px-4 py-6 text-center text-slate-400 dark:text-slate-500">
                     Kelime bulunamadı.
                   </td>
                 </tr>
@@ -131,27 +131,27 @@ export default function WordsPage() {
                   const status = deriveCardStatus(w);
                   return (
                     <tr key={w.id}>
-                      <td className="px-4 py-3 font-semibold text-slate-800">{w.word}</td>
-                      <td className="px-4 py-3 text-slate-500">{w.preposition || "—"}</td>
-                      <td className="px-4 py-3 text-slate-700">{w.meaning}</td>
-                      <td className="px-4 py-3 text-slate-500 italic max-w-xs truncate">
+                      <td className="px-4 py-3 font-semibold text-slate-800 dark:text-slate-100">{w.word}</td>
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{w.preposition || "—"}</td>
+                      <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{w.meaning}</td>
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 italic max-w-xs truncate">
                         {w.example_sentence}
                       </td>
-                      <td className="px-4 py-3 text-slate-500">
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
                         {LEARNING_STAGE_LABELS[stage]}
                       </td>
                       <td className="px-4 py-3">
                         <span
                           className={`text-xs font-medium px-2 py-1 rounded-full ${
                             status === "weak"
-                              ? "bg-orange-100 text-orange-700"
+                              ? "bg-orange-100 dark:bg-orange-950 text-orange-700"
                               : status === "overdue"
-                                ? "bg-red-100 text-red-700"
+                                ? "bg-red-100 dark:bg-red-950 text-red-700"
                                 : status === "due"
-                                  ? "bg-amber-100 text-amber-700"
+                                  ? "bg-amber-100 dark:bg-amber-950 text-amber-700"
                                   : status === "strong"
-                                    ? "bg-green-100 text-green-700"
-                                    : "bg-slate-100 text-slate-600"
+                                    ? "bg-green-100 dark:bg-green-950 text-green-700"
+                                    : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
                           }`}
                         >
                           {CARD_STATUS_LABELS[status]}
@@ -173,7 +173,7 @@ export default function WordsPage() {
           </table>
         </div>
 
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-slate-400 dark:text-slate-500">
           Toplam {filteredWords.length} kelime gösteriliyor.
         </p>
       </div>
@@ -196,7 +196,7 @@ function FilterButton({
       className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
         active
           ? "bg-indigo-600 text-white border-indigo-600"
-          : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300"
+          : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-indigo-300"
       }`}
     >
       {children}

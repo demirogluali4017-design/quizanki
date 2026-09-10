@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { calculateSM2 } from "@/lib/sm2";
+import { logDailyActivity } from "@/lib/dailyActivity";
 import { Flashcard, SelfAssessment, StudyQuestion } from "@/types";
 import FlashCardView from "@/components/FlashCardView";
 import {
@@ -21,11 +22,11 @@ import {
 type Phase = "loading" | "empty" | "recall_front" | "recall_back" | "mcq_pending" | "mcq_answered" | "done";
 
 const STATUS_BADGE_CLASSES: Record<string, string> = {
-  new: "bg-slate-100 text-slate-600",
-  due: "bg-amber-100 text-amber-700",
-  overdue: "bg-red-100 text-red-700",
-  weak: "bg-orange-100 text-orange-700",
-  strong: "bg-green-100 text-green-700",
+  new: "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300",
+  due: "bg-amber-100 dark:bg-amber-950 text-amber-700",
+  overdue: "bg-red-100 dark:bg-red-950 text-red-700",
+  weak: "bg-orange-100 dark:bg-orange-950 text-orange-700",
+  strong: "bg-green-100 dark:bg-green-950 text-green-700",
 };
 
 export default function StudyPage() {
@@ -119,6 +120,9 @@ export default function StudyPage() {
       return;
     }
 
+    // Streak/günlük hedef için aktiviteyi logla (SM-2 verisini etkilemez)
+    logDailyActivity(supabase, { review: true, newWord: card.repetitions === 0 });
+
     if (assessment !== "forgot") {
       setCorrectCount((c) => c + 1);
     }
@@ -159,49 +163,49 @@ export default function StudyPage() {
 
   if (phase === "loading") {
     return (
-      <main className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <p className="text-slate-400">Yükleniyor...</p>
+      <main className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+        <p className="text-slate-400 dark:text-slate-500">Yükleniyor...</p>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-12">
+    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 px-6 py-12">
       <div className="max-w-3xl mx-auto space-y-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900">🧠 Öğren</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">🧠 Öğren</h1>
           <Link href="/study" className="text-sm text-indigo-600 hover:underline">
             ← Mod seçimine dön
           </Link>
         </div>
 
         {phase !== "empty" && phase !== "done" && (
-          <div className="flex items-center justify-between text-xs text-slate-400">
+          <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
             <span>
               Bugünkü paket: {packageSummary.overdue} gecikmiş · {packageSummary.weak} zayıf ·{" "}
               {packageSummary.due} tekrar · {packageSummary.fresh} yeni
             </span>
-            <span className="font-semibold text-slate-600">{progressLabel}</span>
+            <span className="font-semibold text-slate-600 dark:text-slate-300">{progressLabel}</span>
           </div>
         )}
 
         {phase === "empty" && (
-          <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-12 text-center space-y-3">
+          <div className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-12 text-center space-y-3">
             <p className="text-4xl">🎉</p>
-            <p className="text-lg font-semibold text-slate-800">
+            <p className="text-lg font-semibold text-slate-800 dark:text-slate-100">
               Bugünlük tekrar edilecek kart kalmadı!
             </p>
-            <p className="text-slate-500 text-sm">
+            <p className="text-slate-500 dark:text-slate-400 text-sm">
               Yeni kartlar yüklemek için &apos;Kart Yükle&apos; sayfasına git.
             </p>
           </div>
         )}
 
         {phase === "done" && (
-          <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-12 text-center space-y-3">
+          <div className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-12 text-center space-y-3">
             <p className="text-4xl">✅</p>
-            <p className="text-lg font-semibold text-slate-800">Bugünkü paketi bitirdin!</p>
-            <p className="text-slate-500 text-sm">
+            <p className="text-lg font-semibold text-slate-800 dark:text-slate-100">Bugünkü paketi bitirdin!</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">
               {reviewedCount} kelime tekrar ettin, {correctCount} tanesini doğru bildin (%
               {reviewedCount > 0 ? Math.round((correctCount / reviewedCount) * 100) : 0}
               ).
@@ -266,7 +270,7 @@ function RecallView({
       />
 
       {phase === "recall_front" && (
-        <p className="text-center text-sm text-slate-400">
+        <p className="text-center text-sm text-slate-400 dark:text-slate-500">
           Cevabı zihninden hatırlamaya çalış, sonra karta tıkla.
         </p>
       )}
@@ -276,28 +280,28 @@ function RecallView({
           <button
             onClick={() => onAssess("forgot")}
             disabled={submitting}
-            className="rounded-xl bg-red-100 text-red-700 font-semibold py-3 hover:bg-red-200 transition-colors disabled:opacity-50"
+            className="rounded-xl bg-red-100 dark:bg-red-950 text-red-700 font-semibold py-3 hover:bg-red-200 transition-colors disabled:opacity-50"
           >
             😖 Unuttum
           </button>
           <button
             onClick={() => onAssess("struggled")}
             disabled={submitting}
-            className="rounded-xl bg-orange-100 text-orange-700 font-semibold py-3 hover:bg-orange-200 transition-colors disabled:opacity-50"
+            className="rounded-xl bg-orange-100 dark:bg-orange-950 text-orange-700 font-semibold py-3 hover:bg-orange-200 transition-colors disabled:opacity-50"
           >
             😕 Zorlandım
           </button>
           <button
             onClick={() => onAssess("recalled")}
             disabled={submitting}
-            className="rounded-xl bg-amber-100 text-amber-700 font-semibold py-3 hover:bg-amber-200 transition-colors disabled:opacity-50"
+            className="rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-700 font-semibold py-3 hover:bg-amber-200 transition-colors disabled:opacity-50"
           >
             🙂 Hatırladım
           </button>
           <button
             onClick={() => onAssess("easy")}
             disabled={submitting}
-            className="rounded-xl bg-green-100 text-green-700 font-semibold py-3 hover:bg-green-200 transition-colors disabled:opacity-50"
+            className="rounded-xl bg-green-100 dark:bg-green-950 text-green-700 font-semibold py-3 hover:bg-green-200 transition-colors disabled:opacity-50"
           >
             😄 Çok kolaydı
           </button>
@@ -347,11 +351,11 @@ function McqView({
     <div className="space-y-6">
       <StatusBadges stage={stage} status={status} />
 
-      <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-8 text-center space-y-3">
-        <p className="text-xs uppercase tracking-widest text-slate-400 font-medium">
+      <div className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-8 text-center space-y-3">
+        <p className="text-xs uppercase tracking-widest text-slate-400 dark:text-slate-500 font-medium">
           {promptText}
         </p>
-        <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">{promptHeading}</h2>
+        <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100">{promptHeading}</h2>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl mx-auto">
@@ -362,13 +366,13 @@ function McqView({
           let classes =
             "rounded-xl border px-4 py-3 text-left font-medium transition-colors ";
           if (!answered) {
-            classes += "border-slate-200 bg-white hover:border-indigo-400 hover:bg-indigo-50";
+            classes += "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-indigo-400 hover:bg-indigo-50 dark:bg-indigo-950";
           } else if (isCorrect) {
-            classes += "border-green-400 bg-green-50 text-green-700";
+            classes += "border-green-400 bg-green-50 dark:bg-green-950 text-green-700";
           } else if (isSelected && !isCorrect) {
-            classes += "border-red-400 bg-red-50 text-red-700";
+            classes += "border-red-400 bg-red-50 dark:bg-red-950 text-red-700";
           } else {
-            classes += "border-slate-200 bg-white opacity-50";
+            classes += "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 opacity-50";
           }
 
           return (
@@ -411,11 +415,11 @@ function McqView({
 function StatusBadges({ stage, status }: { stage: string; status: string }) {
   return (
     <div className="flex items-center justify-center gap-2">
-      <span className="text-xs font-medium px-3 py-1 rounded-full bg-indigo-50 text-indigo-600">
+      <span className="text-xs font-medium px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600">
         {LEARNING_STAGE_LABELS[stage as keyof typeof LEARNING_STAGE_LABELS]}
       </span>
       <span
-        className={`text-xs font-medium px-3 py-1 rounded-full ${STATUS_BADGE_CLASSES[status] ?? "bg-slate-100 text-slate-600"}`}
+        className={`text-xs font-medium px-3 py-1 rounded-full ${STATUS_BADGE_CLASSES[status] ?? "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"}`}
       >
         {CARD_STATUS_LABELS[status as keyof typeof CARD_STATUS_LABELS]}
       </span>

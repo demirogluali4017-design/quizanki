@@ -40,8 +40,8 @@ export default function CardsBrowsePage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <p className="text-slate-400">Yükleniyor...</p>
+      <main className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+        <p className="text-slate-400 dark:text-slate-500">Yükleniyor...</p>
       </main>
     );
   }
@@ -49,30 +49,30 @@ export default function CardsBrowsePage() {
   const currentCard = cards[index];
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-12">
+    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 px-6 py-12">
       <div className="max-w-3xl mx-auto space-y-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900">🗂️ Kartlar</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">🗂️ Kartlar</h1>
           <Link href="/study" className="text-sm text-indigo-600 hover:underline">
             ← Mod seçimine dön
           </Link>
         </div>
 
-        <p className="text-center text-xs text-slate-400">
+        <p className="text-center text-xs text-slate-400 dark:text-slate-500">
           Serbest gezinme modu — puanlama yapılmaz, SM-2 tekrar planını etkilemez.
         </p>
 
         {!currentCard ? (
-          <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-12 text-center space-y-3">
+          <div className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-12 text-center space-y-3">
             <p className="text-4xl">🗂️</p>
-            <p className="text-lg font-semibold text-slate-800">Henüz hiç kelime yok.</p>
-            <p className="text-slate-500 text-sm">
+            <p className="text-lg font-semibold text-slate-800 dark:text-slate-100">Henüz hiç kelime yok.</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">
               Önce &apos;Kart Yükle&apos; sayfasından bir fotoğraf yükle.
             </p>
           </div>
         ) : (
           <>
-            <p className="text-center text-sm text-slate-400">
+            <p className="text-center text-sm text-slate-400 dark:text-slate-500">
               {index + 1} / {cards.length}
             </p>
 
@@ -86,7 +86,7 @@ export default function CardsBrowsePage() {
               <button
                 onClick={goPrev}
                 disabled={index === 0}
-                className="rounded-xl bg-white border border-slate-200 text-slate-700 font-medium px-6 py-3 hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-medium px-6 py-3 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 ← Önceki
               </button>

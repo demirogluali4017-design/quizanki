@@ -289,6 +289,15 @@ export function pickQuestionType(card: Flashcard, poolSize: number): QuestionTyp
 // ============================================================
 // 8) DISTRACTOR ÜRETİMİ
 // ============================================================
+// Kelime + preposition testi: "word" alanı test edilirken, kelimenin
+// preposition kalıbı varsa (örn. "à qn/qch") bu kalıp kelimeyle
+// BİRLİKTE tek bir test edilebilir birim olarak kullanılır. Böylece
+// kullanıcı doğru edatı bilmeden sadece kelimeyi tanıyarak testi
+// geçemez.
+export function getTestableWord(card: Flashcard): string {
+  return card.preposition ? `${card.word} ${card.preposition}` : card.word;
+}
+
 // Tamamen rastgele değil: benzer kelime uzunluğu / aynı havuzdan seçim.
 // Kullanıcının önceden karıştırdığı kelimeler (weak/struggle kayıtlı
 // kartlar) varsa onlara öncelik verilir — böylece distractor'lar
@@ -297,27 +306,33 @@ export function buildDistractors(
   target: Flashcard,
   pool: Flashcard[],
   field: "meaning" | "word",
-  count = 3
+  count = 3,
+  combinePreposition = true
 ): string[] {
   const candidates = pool.filter((c) => c.id !== target.id);
 
-  const targetLen = target[field].length;
+  const getValue = (c: Flashcard): string =>
+    field === "word" ? (combinePreposition ? getTestableWord(c) : c.word) : c.meaning;
+
+  const targetValue = getValue(target);
+  const targetLen = targetValue.length;
+
   const scored = candidates
     .map((c) => {
-      const lenDiff = Math.abs(c[field].length - targetLen);
+      const value = getValue(c);
+      const lenDiff = Math.abs(value.length - targetLen);
       const struggleBonus = (c.struggle_count ?? 0) + (c.is_weak ? 2 : 0);
       // Küçük uzunluk farkı ve yüksek struggle geçmişi = daha "makul" distractor
       const score = -lenDiff + struggleBonus * 2;
-      return { card: c, score };
+      return { value, score };
     })
     .sort((a, b) => b.score - a.score);
 
   const uniqueValues = new Set<string>();
   const results: string[] = [];
 
-  for (const { card } of scored) {
-    const value = card[field];
-    if (value && value !== target[field] && !uniqueValues.has(value)) {
+  for (const { value } of scored) {
+    if (value && value !== targetValue && !uniqueValues.has(value)) {
       uniqueValues.add(value);
       results.push(value);
     }
@@ -330,10 +345,13 @@ export function buildDistractors(
 export function buildMcqOptions(
   target: Flashcard,
   pool: Flashcard[],
-  field: "meaning" | "word"
+  field: "meaning" | "word",
+  combinePreposition = true
 ): string[] {
-  const distractors = buildDistractors(target, pool, field, 3);
-  const options = shuffle([target[field], ...distractors]);
+  const targetValue =
+    field === "word" ? (combinePreposition ? getTestableWord(target) : target.word) : target.meaning;
+  const distractors = buildDistractors(target, pool, field, 3, combinePreposition);
+  const options = shuffle([targetValue, ...distractors]);
   return options;
 }
 
@@ -349,7 +367,7 @@ export function buildFillBlankQuestion(
   if (!regex.test(card.example_sentence)) return null;
 
   const blankedSentence = card.example_sentence.replace(regex, "______");
-  const options = buildMcqOptions(card, pool, "word");
+  const options = buildMcqOptions(card, pool, "word", false);
 
   return {
     type: "fill_blank",
@@ -378,7 +396,7 @@ export function buildQuestion(card: Flashcard, pool: Flashcard[]): StudyQuestion
       type,
       card,
       options: buildMcqOptions(card, pool, "word"),
-      correctAnswer: card.word,
+      correctAnswer: getTestableWord(card),
     };
   }
 
@@ -415,7 +433,7 @@ export function buildTestQuestion(card: Flashcard, pool: Flashcard[]): StudyQues
       type,
       card,
       options: buildMcqOptions(card, pool, "word"),
-      correctAnswer: card.word,
+      correctAnswer: getTestableWord(card),
     };
   }
 

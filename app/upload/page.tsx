@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import MultiFileUploadZone from "@/components/MultiFileUploadZone";
+import { compressImages } from "@/lib/imageCompression";
 import { Flashcard } from "@/types";
 
 type ProcessState = "idle" | "processing" | "success" | "error";
@@ -12,10 +13,10 @@ export default function UploadPage() {
   const [tab, setTab] = useState<Tab>("photo");
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-12">
+    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 px-6 py-12">
       <div className="max-w-3xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900">⬆️ Kart Yükle</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">⬆️ Kart Yükle</h1>
           <Link href="/" className="text-sm text-indigo-600 hover:underline">
             ← Ana sayfaya dön
           </Link>
@@ -51,7 +52,7 @@ function TabButton({
       className={`text-sm font-medium px-4 py-2 rounded-lg border transition-colors ${
         active
           ? "bg-indigo-600 text-white border-indigo-600"
-          : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300"
+          : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-indigo-300"
       }`}
     >
       {children}
@@ -75,8 +76,10 @@ function PhotoUploadPanel() {
     setErrorMessage(null);
 
     try {
+      const compressedFiles = await compressImages(selectedFiles);
+
       const formData = new FormData();
-      selectedFiles.forEach((file) => formData.append("images", file));
+      compressedFiles.forEach((file) => formData.append("images", file));
 
       const res = await fetch("/api/process-image", {
         method: "POST",
@@ -133,23 +136,23 @@ function PhotoUploadPanel() {
       )}
 
       {state === "error" && errorMessage && (
-        <div className="rounded-xl bg-red-50 border border-red-200 text-red-700 p-4 text-sm">
+        <div className="rounded-xl bg-red-50 dark:bg-red-950 border border-red-200 text-red-700 p-4 text-sm">
           ⚠️ {errorMessage}
         </div>
       )}
 
       {state === "success" && (
         <div className="space-y-4">
-          <div className="rounded-xl bg-green-50 border border-green-200 text-green-700 p-4 text-sm flex items-center justify-between">
+          <div className="rounded-xl bg-green-50 dark:bg-green-950 border border-green-200 text-green-700 p-4 text-sm flex items-center justify-between">
             <span>✅ {savedWords.length} kelime başarıyla kaydedildi.</span>
             <button onClick={handleReset} className="text-green-800 font-medium hover:underline">
               Yeni sayfa yükle
             </button>
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+          <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
             <table className="w-full text-sm">
-              <thead className="bg-slate-100 text-slate-500 text-left">
+              <thead className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 text-left">
                 <tr>
                   <th className="px-4 py-3 font-medium">Kelime</th>
                   <th className="px-4 py-3 font-medium">Preposition</th>
@@ -157,13 +160,13 @@ function PhotoUploadPanel() {
                   <th className="px-4 py-3 font-medium">Örnek Cümle</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                 {savedWords.map((w) => (
                   <tr key={w.id}>
-                    <td className="px-4 py-3 font-semibold text-slate-800">{w.word}</td>
-                    <td className="px-4 py-3 text-slate-500">{w.preposition ?? "—"}</td>
-                    <td className="px-4 py-3 text-slate-700">{w.meaning}</td>
-                    <td className="px-4 py-3 text-slate-500 italic">{w.example_sentence}</td>
+                    <td className="px-4 py-3 font-semibold text-slate-800 dark:text-slate-100">{w.word}</td>
+                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{w.preposition ?? "—"}</td>
+                    <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{w.meaning}</td>
+                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400 italic">{w.example_sentence}</td>
                   </tr>
                 ))}
               </tbody>
@@ -230,7 +233,7 @@ function ManualAddPanel() {
 
   return (
     <div className="space-y-4">
-      <form onSubmit={handleSubmit} className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6 space-y-4">
+      <form onSubmit={handleSubmit} className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-6 space-y-4">
         <Field label="Kelime *" value={word} onChange={setWord} placeholder="ör. améliorer" required />
         <Field
           label="Preposition (edat)"
@@ -257,13 +260,13 @@ function ManualAddPanel() {
       </form>
 
       {state === "success" && (
-        <div className="rounded-xl bg-green-50 border border-green-200 text-green-700 p-4 text-sm">
+        <div className="rounded-xl bg-green-50 dark:bg-green-950 border border-green-200 text-green-700 p-4 text-sm">
           ✅ Kelime eklendi. Bu oturumda toplam {addedCount} kelime ekledin — devam edebilirsin.
         </div>
       )}
 
       {state === "error" && errorMessage && (
-        <div className="rounded-xl bg-red-50 border border-red-200 text-red-700 p-4 text-sm">
+        <div className="rounded-xl bg-red-50 dark:bg-red-950 border border-red-200 text-red-700 p-4 text-sm">
           ⚠️ {errorMessage}
         </div>
       )}
@@ -288,14 +291,14 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+      <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{label}</label>
       {textarea ? (
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           rows={2}
-          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
         />
       ) : (
         <input
@@ -304,7 +307,7 @@ function Field({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           required={required}
-          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
         />
       )}
     </div>
