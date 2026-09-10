@@ -130,7 +130,7 @@ export default async function HomePage() {
         </div>
       </div>
 
-      <div className="grid sm:grid-cols-3 gap-4 mt-10 max-w-2xl w-full">
+      <div className="grid sm:grid-cols-4 gap-4 mt-10 max-w-2xl w-full">
         <Link
           href="/upload"
           className="rounded-xl bg-slate-900 text-white font-medium py-4 px-6 text-center hover:bg-slate-800 transition-colors"
@@ -148,6 +148,12 @@ export default async function HomePage() {
           className="rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-medium py-4 px-6 text-center border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
         >
           📋 Tüm Kelimeler
+        </Link>
+        <Link
+          href="/progress"
+          className="rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-medium py-4 px-6 text-center border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+        >
+          📈 İlerleme
         </Link>
       </div>
     </main>
