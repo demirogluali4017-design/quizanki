@@ -17,6 +17,9 @@ export interface Flashcard {
   struggle_count?: number;
   is_weak?: boolean;
   last_reviewed_at?: string | null;
+  // --- SM-2 Geçiş Sistemi (migration_6_learning_phase.sql) ---
+  in_learning_phase?: boolean;
+  learning_streak?: number;
 }
 
 // Gemini'nin döndürdüğü ham JSON satırı (henüz DB'ye kaydedilmemiş)

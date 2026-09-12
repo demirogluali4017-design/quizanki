@@ -17,6 +17,7 @@ import {
   deriveCardStatus,
   LEARNING_STAGE_LABELS,
   CARD_STATUS_LABELS,
+  getTestableWord,
 } from "@/lib/studyEngine";
 
 type Phase = "loading" | "empty" | "recall_front" | "recall_back" | "mcq_pending" | "mcq_answered" | "done";
@@ -342,7 +343,7 @@ function McqView({
 
   const promptHeading =
     question.type === "mcq_fr_to_tr"
-      ? question.card.word
+      ? getTestableWord(question.card)
       : question.type === "mcq_tr_to_fr"
         ? question.card.meaning
         : question.blankedSentence;

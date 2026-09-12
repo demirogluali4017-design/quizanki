@@ -17,6 +17,10 @@ export default function SettingsPage() {
   const [goalsLoaded, setGoalsLoaded] = useState(false);
   const [savingGoals, setSavingGoals] = useState(false);
 
+  const [learningThreshold, setLearningThreshold] = useState(2);
+  const [autoPromoteEnabled, setAutoPromoteEnabled] = useState(true);
+  const [savingLearning, setSavingLearning] = useState(false);
+
   useEffect(() => {
     const s = getTTSSettings();
     setRate(s.rate);
@@ -26,12 +30,14 @@ export default function SettingsPage() {
     async function loadGoals() {
       const { data } = await supabase
         .from("app_settings")
-        .select("daily_new_goal, daily_review_goal")
+        .select("daily_new_goal, daily_review_goal, learning_phase_threshold, auto_promote_enabled")
         .eq("id", 1)
         .maybeSingle();
       if (data) {
         setDailyNewGoal(data.daily_new_goal);
         setDailyReviewGoal(data.daily_review_goal);
+        setLearningThreshold(data.learning_phase_threshold ?? 2);
+        setAutoPromoteEnabled(data.auto_promote_enabled ?? true);
       }
       setGoalsLoaded(true);
     }
@@ -49,6 +55,19 @@ export default function SettingsPage() {
       })
       .eq("id", 1);
     setSavingGoals(false);
+  }
+
+  async function saveLearningSettings() {
+    setSavingLearning(true);
+    await supabase
+      .from("app_settings")
+      .update({
+        learning_phase_threshold: learningThreshold,
+        auto_promote_enabled: autoPromoteEnabled,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", 1);
+    setSavingLearning(false);
   }
 
   function updateRate(value: number) {
@@ -154,6 +173,71 @@ export default function SettingsPage() {
 
               <p className="text-xs text-slate-400 dark:text-slate-500">
                 Bu hedef tüm cihazlarda ortak — ana sayfadaki ilerleme çubukları buna göre dolar.
+              </p>
+            </>
+          )}
+        </section>
+
+        {/* SM-2 Geçiş Sistemi */}
+        <section className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-6 space-y-5">
+          <h2 className="font-semibold text-slate-800 dark:text-slate-100">🌱 SM-2 Geçiş Sistemi</h2>
+
+          {goalsLoaded && (
+            <>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Otomatik geçiş</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">
+                    Kapatırsan kelimeler sadece &apos;SM-2&apos;ye Aktar&apos; butonuyla geçer.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setAutoPromoteEnabled((v) => !v)}
+                  className={`w-12 h-7 rounded-full transition-colors relative shrink-0 ${
+                    autoPromoteEnabled ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-600"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-transform ${
+                      autoPromoteEnabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className={autoPromoteEnabled ? "" : "opacity-40 pointer-events-none"}>
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <label className="text-slate-600 dark:text-slate-300">
+                    Geçiş eşiği (art arda kaç kez Hatırladım/Çok kolaydı)
+                  </label>
+                </div>
+                <div className="flex gap-2">
+                  {[1, 2, 3].map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => setLearningThreshold(n)}
+                      className={`flex-1 rounded-lg py-2 text-sm font-medium border transition-colors ${
+                        learningThreshold === n
+                          ? "bg-indigo-600 text-white border-indigo-600"
+                          : "bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600"
+                      }`}
+                    >
+                      {n} kez
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={saveLearningSettings}
+                disabled={savingLearning}
+                className="w-full rounded-lg bg-indigo-600 text-white font-medium py-2.5 hover:bg-indigo-700 transition-colors text-sm disabled:opacity-60"
+              >
+                {savingLearning ? "Kaydediliyor..." : "Kaydet"}
+              </button>
+
+              <p className="text-xs text-slate-400 dark:text-slate-500">
+                Bu ayar sadece &apos;Sıfırdan Öğren&apos; modundaki kelimeleri etkiler; mevcut SM-2&apos;deki kelimelere dokunmaz.
               </p>
             </>
           )}

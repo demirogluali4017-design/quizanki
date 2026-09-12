@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { Flashcard, StudyQuestion } from "@/types";
-import { buildTestQuestion } from "@/lib/studyEngine";
+import { buildTestQuestion, getTestableWord } from "@/lib/studyEngine";
 
 const TEST_LENGTH = 15;
 const BASE_POINTS = 100;
@@ -168,7 +168,7 @@ export default function TestModePage() {
 
   const promptHeading =
     current?.type === "mcq_fr_to_tr"
-      ? current.card.word
+      ? getTestableWord(current.card)
       : current?.type === "mcq_tr_to_fr"
         ? current.card.meaning
         : current?.blankedSentence;

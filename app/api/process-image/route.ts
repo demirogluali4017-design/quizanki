@@ -201,6 +201,8 @@ export async function POST(request: NextRequest) {
       interval: 1,
       ease_factor: 2.5,
       next_review_date: new Date().toISOString(),
+      in_learning_phase: true,
+      learning_streak: 0,
     }));
 
     const supabaseAdmin = createServiceRoleClient();

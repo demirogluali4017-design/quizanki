@@ -12,6 +12,8 @@ import { computeWeakWordUpdate } from "@/lib/studyEngine";
 type Phase = "loading" | "empty" | "front" | "back";
 type DayFilter = "all" | "7" | "30";
 
+const DEFAULT_THRESHOLD = 2;
+
 function shuffle<T>(arr: T[]): T[] {
   const copy = [...arr];
   for (let i = copy.length - 1; i > 0; i--) {
@@ -21,42 +23,60 @@ function shuffle<T>(arr: T[]): T[] {
   return copy;
 }
 
+function tomorrowISO(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toISOString();
+}
+
 export default function NewWordsModePage() {
   const [allNewCards, setAllNewCards] = useState<Flashcard[]>([]);
   const [dayFilter, setDayFilter] = useState<DayFilter>("all");
   const [queue, setQueue] = useState<Flashcard[]>([]);
   const [phase, setPhase] = useState<Phase>("loading");
   const [reviewedCount, setReviewedCount] = useState(0);
+  const [graduatedCount, setGraduatedCount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+
+  const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD);
+  const [autoPromoteEnabled, setAutoPromoteEnabled] = useState(true);
 
   const loadCards = useCallback(async () => {
     setPhase("loading");
+
+    const { data: settings } = await supabase
+      .from("app_settings")
+      .select("learning_phase_threshold, auto_promote_enabled")
+      .eq("id", 1)
+      .maybeSingle();
+
+    if (settings) {
+      setThreshold(settings.learning_phase_threshold ?? DEFAULT_THRESHOLD);
+      setAutoPromoteEnabled(settings.auto_promote_enabled ?? true);
+    }
+
     const { data, error } = await supabase
       .from("flashcards")
       .select("*")
-      .eq("repetitions", 0);
+      .eq("in_learning_phase", true);
 
     if (error || !data) {
       setPhase("empty");
       return;
     }
 
-    const cards = data as Flashcard[];
-    setAllNewCards(cards);
+    setAllNewCards(data as Flashcard[]);
   }, []);
 
   useEffect(() => {
     loadCards();
   }, [loadCards]);
 
-  // Gün filtresi değiştiğinde veya kartlar yüklendiğinde kuyruğu yeniden kur
   useEffect(() => {
-    if (allNewCards.length === 0 && phase !== "loading") {
-      // ilk yüklemede henüz veri gelmemiş olabilir, aşağıdaki filtre effect'i halleder
-    }
     const filtered = filterByDay(allNewCards, dayFilter);
     setQueue(shuffle(filtered));
     setReviewedCount(0);
+    setGraduatedCount(0);
     setPhase(filtered.length > 0 ? "front" : "empty");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allNewCards, dayFilter]);
@@ -75,38 +95,8 @@ export default function NewWordsModePage() {
     [allNewCards, dayFilter]
   );
 
-  async function handleAssess(assessment: SelfAssessment) {
-    if (!currentCard || submitting) return;
-    setSubmitting(true);
-
-    const rating =
-      assessment === "forgot" ? 1 : assessment === "struggled" ? 2 : assessment === "recalled" ? 3 : 5;
-
-    const sm2Result = calculateSM2(
-      {
-        repetitions: currentCard.repetitions,
-        interval: currentCard.interval,
-        ease_factor: currentCard.ease_factor,
-      },
-      rating
-    );
-
-    const weakUpdate = computeWeakWordUpdate(currentCard, assessment);
-
-    const { error } = await supabase
-      .from("flashcards")
-      .update({
-        repetitions: sm2Result.repetitions,
-        interval: sm2Result.interval,
-        ease_factor: sm2Result.ease_factor,
-        next_review_date: sm2Result.next_review_date,
-        correct_count: weakUpdate.correct_count,
-        incorrect_count: weakUpdate.incorrect_count,
-        struggle_count: weakUpdate.struggle_count,
-        is_weak: weakUpdate.is_weak,
-        last_reviewed_at: new Date().toISOString(),
-      })
-      .eq("id", currentCard.id);
+  async function applyUpdate(card: Flashcard, payload: Record<string, unknown>, wasGraduated: boolean) {
+    const { error } = await supabase.from("flashcards").update(payload).eq("id", card.id);
 
     if (error) {
       alert("Kart güncellenirken hata oluştu: " + error.message);
@@ -114,13 +104,105 @@ export default function NewWordsModePage() {
       return;
     }
 
-    // Bu moddaki tüm kartlar tanım gereği "yeni" (repetitions=0'dan başlar)
     logDailyActivity(supabase, { review: true, newWord: true });
 
+    if (wasGraduated) setGraduatedCount((c) => c + 1);
     setReviewedCount((c) => c + 1);
-    setQueue((q) => q.slice(1));
-    setPhase(queue.length - 1 > 0 ? "front" : "empty");
+
+    setQueue((q) => {
+      const next = q.slice(1);
+      setPhase(next.length > 0 ? "front" : "empty");
+      return next;
+    });
     setSubmitting(false);
+  }
+
+  async function handleAssess(assessment: SelfAssessment) {
+    if (!currentCard || submitting) return;
+    setSubmitting(true);
+
+    const weakUpdate = computeWeakWordUpdate(currentCard, assessment);
+    const baseWeakFields = {
+      correct_count: weakUpdate.correct_count,
+      incorrect_count: weakUpdate.incorrect_count,
+      struggle_count: weakUpdate.struggle_count,
+      is_weak: weakUpdate.is_weak,
+      last_reviewed_at: new Date().toISOString(),
+    };
+
+    const isPositive = assessment === "recalled" || assessment === "easy";
+
+    if (!isPositive) {
+      // Unuttum / Zorlandım → seri sıfırlanır, öğrenme kutusunda kalır
+      await applyUpdate(
+        currentCard,
+        {
+          ...baseWeakFields,
+          learning_streak: 0,
+          next_review_date: tomorrowISO(),
+        },
+        false
+      );
+      return;
+    }
+
+    const newStreak = (currentCard.learning_streak ?? 0) + 1;
+
+    if (autoPromoteEnabled && newStreak >= threshold) {
+      // Eşik aşıldı → gerçek SM-2'ye devret
+      const rating = assessment === "easy" ? 5 : 3;
+      const sm2Result = calculateSM2(
+        { repetitions: 0, interval: 1, ease_factor: currentCard.ease_factor },
+        rating
+      );
+      await applyUpdate(
+        currentCard,
+        {
+          ...baseWeakFields,
+          in_learning_phase: false,
+          learning_streak: 0,
+          repetitions: sm2Result.repetitions,
+          interval: sm2Result.interval,
+          ease_factor: sm2Result.ease_factor,
+          next_review_date: sm2Result.next_review_date,
+        },
+        true
+      );
+    } else {
+      // Öğrenme kutusunda kal, seriyi ilerlet
+      await applyUpdate(
+        currentCard,
+        {
+          ...baseWeakFields,
+          learning_streak: newStreak,
+          next_review_date: tomorrowISO(),
+        },
+        false
+      );
+    }
+  }
+
+  async function handleManualPromote() {
+    if (!currentCard || submitting) return;
+    setSubmitting(true);
+
+    const sm2Result = calculateSM2(
+      { repetitions: 0, interval: 1, ease_factor: currentCard.ease_factor },
+      3
+    );
+
+    await applyUpdate(
+      currentCard,
+      {
+        in_learning_phase: false,
+        learning_streak: 0,
+        repetitions: sm2Result.repetitions,
+        interval: sm2Result.interval,
+        ease_factor: sm2Result.ease_factor,
+        next_review_date: sm2Result.next_review_date,
+      },
+      true
+    );
   }
 
   if (phase === "loading") {
@@ -142,7 +224,9 @@ export default function NewWordsModePage() {
         </div>
 
         <p className="text-center text-xs text-slate-400 dark:text-slate-500">
-          Sadece hiç tekrar edilmemiş (Yeni) kelimeler — diğer tekrarlarla karışmaz.
+          {autoPromoteEnabled
+            ? `Art arda ${threshold} kez Hatırladım/Çok kolaydı dersen kelime otomatik SM-2 tekrar sistemine geçer.`
+            : "Otomatik geçiş kapalı — kelimeleri 'SM-2'ye Aktar' butonuyla manuel geçirebilirsin."}
         </p>
 
         <div className="flex items-center justify-center gap-2">
@@ -162,12 +246,12 @@ export default function NewWordsModePage() {
             <p className="text-4xl">🌱</p>
             <p className="text-lg font-semibold text-slate-800 dark:text-slate-100">
               {totalForFilter === 0
-                ? "Bu filtrede hiç yeni kelime yok."
+                ? "Bu filtrede öğrenme kutusunda kelime yok."
                 : "Bu oturumda tüm yeni kelimeleri bitirdin!"}
             </p>
             <p className="text-slate-500 dark:text-slate-400 text-sm">
               {reviewedCount > 0
-                ? `${reviewedCount} yeni kelimeyi ilk kez tekrar ettin.`
+                ? `${reviewedCount} kelime tekrar ettin, ${graduatedCount} tanesi SM-2'ye geçti.`
                 : "Yeni kelime yüklemek için 'Kart Yükle' sayfasına git."}
             </p>
           </div>
@@ -175,9 +259,16 @@ export default function NewWordsModePage() {
 
         {currentCard && (phase === "front" || phase === "back") && (
           <>
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-xs font-medium px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-600">
+                🌱 Öğrenme kutusu: {currentCard.learning_streak ?? 0}/{threshold}
+              </span>
+            </div>
+
             <p className="text-center text-sm text-slate-400 dark:text-slate-500">
               Kalan: <span className="font-semibold text-slate-600 dark:text-slate-300">{queue.length}</span>
               {" · "}Bu oturumda tekrar edilen: {reviewedCount}
+              {graduatedCount > 0 && ` · SM-2'ye geçen: ${graduatedCount}`}
             </p>
 
             <FlashCardView
@@ -187,34 +278,44 @@ export default function NewWordsModePage() {
             />
 
             {phase === "back" && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-xl mx-auto">
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-xl mx-auto">
+                  <button
+                    onClick={() => handleAssess("forgot")}
+                    disabled={submitting}
+                    className="rounded-xl bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 font-semibold py-3 hover:bg-red-200 dark:hover:bg-red-900 transition-colors disabled:opacity-50"
+                  >
+                    😖 Unuttum
+                  </button>
+                  <button
+                    onClick={() => handleAssess("struggled")}
+                    disabled={submitting}
+                    className="rounded-xl bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 font-semibold py-3 hover:bg-orange-200 dark:hover:bg-orange-900 transition-colors disabled:opacity-50"
+                  >
+                    😕 Zorlandım
+                  </button>
+                  <button
+                    onClick={() => handleAssess("recalled")}
+                    disabled={submitting}
+                    className="rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-semibold py-3 hover:bg-amber-200 dark:hover:bg-amber-900 transition-colors disabled:opacity-50"
+                  >
+                    🙂 Hatırladım
+                  </button>
+                  <button
+                    onClick={() => handleAssess("easy")}
+                    disabled={submitting}
+                    className="rounded-xl bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300 font-semibold py-3 hover:bg-green-200 dark:hover:bg-green-900 transition-colors disabled:opacity-50"
+                  >
+                    😄 Çok kolaydı
+                  </button>
+                </div>
+
                 <button
-                  onClick={() => handleAssess("forgot")}
+                  onClick={handleManualPromote}
                   disabled={submitting}
-                  className="rounded-xl bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 font-semibold py-3 hover:bg-red-200 dark:hover:bg-red-900 transition-colors disabled:opacity-50"
+                  className="w-full max-w-xl mx-auto block text-xs text-indigo-600 hover:underline disabled:opacity-50"
                 >
-                  😖 Unuttum
-                </button>
-                <button
-                  onClick={() => handleAssess("struggled")}
-                  disabled={submitting}
-                  className="rounded-xl bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 font-semibold py-3 hover:bg-orange-200 dark:hover:bg-orange-900 transition-colors disabled:opacity-50"
-                >
-                  😕 Zorlandım
-                </button>
-                <button
-                  onClick={() => handleAssess("recalled")}
-                  disabled={submitting}
-                  className="rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-semibold py-3 hover:bg-amber-200 dark:hover:bg-amber-900 transition-colors disabled:opacity-50"
-                >
-                  🙂 Hatırladım
-                </button>
-                <button
-                  onClick={() => handleAssess("easy")}
-                  disabled={submitting}
-                  className="rounded-xl bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300 font-semibold py-3 hover:bg-green-200 dark:hover:bg-green-900 transition-colors disabled:opacity-50"
-                >
-                  😄 Çok kolaydı
+                  ⏩ SM-2'ye Aktar (eşiği beklemeden hemen geçir)
                 </button>
               </div>
             )}
