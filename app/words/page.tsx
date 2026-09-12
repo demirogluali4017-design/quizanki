@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { Flashcard } from "@/types";
+import { Flashcard, WordGroup } from "@/types";
 import {
   deriveLearningStage,
   deriveCardStatus,
@@ -11,29 +11,35 @@ import {
   CARD_STATUS_LABELS,
 } from "@/lib/studyEngine";
 
-type FilterTab = "all" | "weak" | "long_term" | "new";
+type FilterTab = "all" | "weak" | "long_term" | "new" | "grouped";
 
 export default function WordsPage() {
   const [words, setWords] = useState<Flashcard[]>([]);
+  const [groups, setGroups] = useState<WordGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterTab>("all");
 
-  useEffect(() => {
-    async function fetchWords() {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("flashcards")
-        .select("*")
-        .order("created_at", { ascending: false });
+  async function fetchAll() {
+    setLoading(true);
+    const [{ data: wordData }, { data: groupData }] = await Promise.all([
+      supabase.from("flashcards").select("*").order("created_at", { ascending: false }),
+      supabase.from("word_groups").select("*").order("name", { ascending: true }),
+    ]);
+    if (wordData) setWords(wordData as Flashcard[]);
+    if (groupData) setGroups(groupData as WordGroup[]);
+    setLoading(false);
+  }
 
-      if (!error && data) {
-        setWords(data as Flashcard[]);
-      }
-      setLoading(false);
-    }
-    fetchWords();
+  useEffect(() => {
+    fetchAll();
   }, []);
+
+  const groupNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    groups.forEach((g) => map.set(g.id, g.name));
+    return map;
+  }, [groups]);
 
   const filteredWords = useMemo(() => {
     let list = words;
@@ -44,6 +50,8 @@ export default function WordsPage() {
       list = list.filter((w) => deriveLearningStage(w) === "long_term");
     } else if (filter === "new") {
       list = list.filter((w) => deriveLearningStage(w) === "new");
+    } else if (filter === "grouped") {
+      list = list.filter((w) => !!w.group_id);
     }
 
     const q = search.trim().toLowerCase();
@@ -57,6 +65,7 @@ export default function WordsPage() {
   }, [words, search, filter]);
 
   const weakCount = useMemo(() => words.filter((w) => w.is_weak).length, [words]);
+  const groupedCount = useMemo(() => words.filter((w) => w.group_id).length, [words]);
 
   async function handleDelete(id: string) {
     if (!confirm("Bu kelimeyi silmek istediğine emin misin?")) return;
@@ -66,9 +75,47 @@ export default function WordsPage() {
     }
   }
 
+  async function handleAssignGroup(word: Flashcard, value: string) {
+    if (value === "__new__") {
+      const name = prompt("Yeni grup adı (örn. 'artırmak/büyütmek'):");
+      if (!name || !name.trim()) return;
+
+      const { data: newGroup, error } = await supabase
+        .from("word_groups")
+        .insert({ name: name.trim() })
+        .select()
+        .single();
+
+      if (error || !newGroup) {
+        alert("Grup oluşturulamadı: " + error?.message);
+        return;
+      }
+
+      setGroups((prev) => [...prev, newGroup as WordGroup]);
+      await updateWordGroup(word.id, (newGroup as WordGroup).id);
+      return;
+    }
+
+    if (value === "__none__") {
+      await updateWordGroup(word.id, null);
+      return;
+    }
+
+    await updateWordGroup(word.id, value);
+  }
+
+  async function updateWordGroup(wordId: string, groupId: string | null) {
+    const { error } = await supabase.from("flashcards").update({ group_id: groupId }).eq("id", wordId);
+    if (!error) {
+      setWords((prev) => prev.map((w) => (w.id === wordId ? { ...w, group_id: groupId } : w)));
+    } else {
+      alert("Grup ataması güncellenemedi: " + error.message);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-slate-950 px-6 py-12">
-      <div className="max-w-5xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">📋 Tüm Kelimeler</h1>
           <Link href="/" className="text-sm text-indigo-600 hover:underline">
@@ -88,6 +135,9 @@ export default function WordsPage() {
           </FilterButton>
           <FilterButton active={filter === "long_term"} onClick={() => setFilter("long_term")}>
             🧠 Uzun Süreli Hafıza
+          </FilterButton>
+          <FilterButton active={filter === "grouped"} onClick={() => setFilter("grouped")}>
+            🔗 Gruplu ({groupedCount})
           </FilterButton>
         </div>
 
@@ -109,19 +159,20 @@ export default function WordsPage() {
                 <th className="px-4 py-3 font-medium">Örnek Cümle</th>
                 <th className="px-4 py-3 font-medium">Aşama</th>
                 <th className="px-4 py-3 font-medium">Durum</th>
+                <th className="px-4 py-3 font-medium">Grup</th>
                 <th className="px-4 py-3 font-medium"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center text-slate-400 dark:text-slate-500">
+                  <td colSpan={8} className="px-4 py-6 text-center text-slate-400 dark:text-slate-500">
                     Yükleniyor...
                   </td>
                 </tr>
               ) : filteredWords.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center text-slate-400 dark:text-slate-500">
+                  <td colSpan={8} className="px-4 py-6 text-center text-slate-400 dark:text-slate-500">
                     Kelime bulunamadı.
                   </td>
                 </tr>
@@ -158,6 +209,24 @@ export default function WordsPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
+                        <select
+                          value={w.group_id ?? "__none__"}
+                          onChange={(e) => handleAssignGroup(w, e.target.value)}
+                          className="text-xs rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-1.5 max-w-[140px]"
+                        >
+                          <option value="__none__">— (grupsuz)</option>
+                          {groups.map((g) => (
+                            <option key={g.id} value={g.id}>
+                              {g.name}
+                            </option>
+                          ))}
+                          <option value="__new__">+ Yeni grup oluştur</option>
+                        </select>
+                        {w.group_id && groupNameById.get(w.group_id) && (
+                          <p className="text-[10px] text-indigo-500 mt-1">🔗 {groupNameById.get(w.group_id)}</p>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
                         <button
                           onClick={() => handleDelete(w.id)}
                           className="text-red-500 hover:underline text-xs"
@@ -174,7 +243,9 @@ export default function WordsPage() {
         </div>
 
         <p className="text-xs text-slate-400 dark:text-slate-500">
-          Toplam {filteredWords.length} kelime gösteriliyor.
+          Toplam {filteredWords.length} kelime gösteriliyor. Bir kelimeyi gruplayınca, Test/Öğren
+          modlarında aynı gruptan seçenekler arasından &quot;hangisi bu kelimeyle aynı anlam
+          grubundan?&quot; şeklinde ara sıra soru çıkar.
         </p>
       </div>
     </main>

@@ -18,6 +18,7 @@ import {
   LEARNING_STAGE_LABELS,
   CARD_STATUS_LABELS,
   getTestableWord,
+  getGroupSiblings,
 } from "@/lib/studyEngine";
 
 type Phase = "loading" | "empty" | "recall_front" | "recall_back" | "mcq_pending" | "mcq_answered" | "done";
@@ -219,6 +220,7 @@ export default function StudyPage() {
             question={currentQuestion}
             phase={phase}
             submitting={submitting}
+            pool={allCards}
             onShowAnswer={handleShowAnswer}
             onAssess={(assessment) => finalizeReview(currentQuestion.card, assessment)}
           />
@@ -248,17 +250,20 @@ function RecallView({
   question,
   phase,
   submitting,
+  pool,
   onShowAnswer,
   onAssess,
 }: {
   question: StudyQuestion;
   phase: Phase;
   submitting: boolean;
+  pool: Flashcard[];
   onShowAnswer: () => void;
   onAssess: (assessment: SelfAssessment) => void;
 }) {
   const stage = deriveLearningStage(question.card);
   const status = deriveCardStatus(question.card);
+  const groupSiblings = phase === "recall_back" ? getGroupSiblings(question.card, pool) : [];
 
   return (
     <div className="space-y-4">
@@ -269,6 +274,12 @@ function RecallView({
         isFlipped={phase === "recall_back"}
         onFlip={phase === "recall_front" ? onShowAnswer : () => {}}
       />
+
+      {groupSiblings.length > 0 && (
+        <p className="text-center text-xs text-indigo-500 dark:text-indigo-400">
+          🔗 Aynı grupta: {groupSiblings.map((s) => s.word).join(", ")}
+        </p>
+      )}
 
       {phase === "recall_front" && (
         <p className="text-center text-sm text-slate-400 dark:text-slate-500">
@@ -339,14 +350,18 @@ function McqView({
       ? "Bu kelimenin Türkçe anlamı nedir?"
       : question.type === "mcq_tr_to_fr"
         ? "Bu anlama gelen Fransızca kelime hangisi?"
-        : "Boşluğu doğru kelimeyle tamamla:";
+        : question.type === "synonym"
+          ? "Bu kelimeyle aynı anlam grubundan olan hangisi?"
+          : "Boşluğu doğru kelimeyle tamamla:";
 
   const promptHeading =
     question.type === "mcq_fr_to_tr"
       ? getTestableWord(question.card)
       : question.type === "mcq_tr_to_fr"
         ? question.card.meaning
-        : question.blankedSentence;
+        : question.type === "synonym"
+          ? getTestableWord(question.card)
+          : question.blankedSentence;
 
   return (
     <div className="space-y-6">

@@ -20,6 +20,14 @@ export interface Flashcard {
   // --- SM-2 Geçiş Sistemi (migration_6_learning_phase.sql) ---
   in_learning_phase?: boolean;
   learning_streak?: number;
+  // --- Eş Anlamlı Gruplar (migration_7_word_groups.sql) ---
+  group_id?: string | null;
+}
+
+export interface WordGroup {
+  id: string;
+  name: string;
+  created_at: string;
 }
 
 // Gemini'nin döndürdüğü ham JSON satırı (henüz DB'ye kaydedilmemiş)
@@ -66,7 +74,8 @@ export type QuestionType =
   | "recall" // Kelimeyi gör, zihinden hatırla, cevabı göster (temel akış)
   | "mcq_fr_to_tr" // Fransızca kelime → doğru Türkçe anlamı seç
   | "mcq_tr_to_fr" // Türkçe anlam → doğru Fransızca kelimeyi seç
-  | "fill_blank"; // Örnek cümlede boşluk doldurma (çoktan seçmeli)
+  | "fill_blank" // Örnek cümlede boşluk doldurma (çoktan seçmeli)
+  | "synonym"; // Aynı gruptaki eş anlamlı kelimeyi seç
 
 export interface StudyQuestion {
   type: QuestionType;

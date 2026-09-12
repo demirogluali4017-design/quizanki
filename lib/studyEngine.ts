@@ -380,6 +380,13 @@ export function buildFillBlankQuestion(
 
 /** Bir kart için tam bir StudyQuestion nesnesi üretir (soru tipini de kendi seçer). */
 export function buildQuestion(card: Flashcard, pool: Flashcard[]): StudyQuestion {
+  // Kartın eş anlamlı grubu varsa, ara sıra (yaklaşık %25) doğrudan
+  // grup testi sor — hafıza çapası mantığını pekiştirmek için.
+  if (card.group_id && Math.random() < 0.25) {
+    const synonymQuestion = buildSynonymQuestion(card, pool);
+    if (synonymQuestion) return synonymQuestion;
+  }
+
   const type = pickQuestionType(card, pool.length);
 
   if (type === "mcq_fr_to_tr") {
@@ -420,8 +427,16 @@ export function buildQuestion(card: Flashcard, pool: Flashcard[]): StudyQuestion
 export function buildTestQuestion(card: Flashcard, pool: Flashcard[]): StudyQuestion {
   const candidateTypes: QuestionType[] = ["mcq_fr_to_tr", "mcq_tr_to_fr"];
   if (card.example_sentence) candidateTypes.push("fill_blank", "fill_blank"); // biraz daha olası yap
+  if (card.group_id && getGroupSiblings(card, pool).length > 0) {
+    candidateTypes.push("synonym", "synonym"); // grubu varsa biraz daha olası yap
+  }
 
   const type = candidateTypes[Math.floor(Math.random() * candidateTypes.length)];
+
+  if (type === "synonym") {
+    const synonymQuestion = buildSynonymQuestion(card, pool);
+    if (synonymQuestion) return synonymQuestion;
+  }
 
   if (type === "fill_blank") {
     const fillBlank = buildFillBlankQuestion(card, pool);
@@ -442,5 +457,50 @@ export function buildTestQuestion(card: Flashcard, pool: Flashcard[]): StudyQues
     card,
     options: buildMcqOptions(card, pool, "meaning"),
     correctAnswer: card.meaning,
+  };
+}
+
+// ============================================================
+// 10) EŞ ANLAMLI GRUP TESTİ
+// ============================================================
+// Amaç: kullanıcı bir kelimeyi unutsa bile, aynı gruptaki (group_id
+// aynı) bildiği başka bir kelime hafıza çapası olarak devreye girsin.
+// Bu yüzden distractor'lar özellikle FARKLI gruplardan/grupsuz
+// kartlardan seçilir — doğru cevap her zaman AYNI gruptan bir kelime.
+
+/** Bir kartın aynı gruptaki diğer üyelerini döndürür (kendisi hariç). */
+export function getGroupSiblings(card: Flashcard, pool: Flashcard[]): Flashcard[] {
+  if (!card.group_id) return [];
+  return pool.filter((c) => c.id !== card.id && c.group_id === card.group_id);
+}
+
+/**
+ * Eş anlamlı grup sorusu üretir. Kartın grubu yoksa veya grupta tek
+ * başınaysa null döner (bu durumda çağıran taraf başka bir soru
+ * tipine düşmeli).
+ */
+export function buildSynonymQuestion(card: Flashcard, pool: Flashcard[]): StudyQuestion | null {
+  const siblings = getGroupSiblings(card, pool);
+  if (siblings.length === 0) return null;
+
+  const correctSibling = siblings[Math.floor(Math.random() * siblings.length)];
+  const correctAnswer = getTestableWord(correctSibling);
+
+  // Distractor'lar: FARKLI gruptan veya grupsuz kartlardan (aynı grubun
+  // başka üyeleri distractor olarak KULLANILMAZ, çünkü onlar da doğru
+  // sayılırdı — testin amacı grup ayrımını netleştirmek).
+  const outsideGroup = pool.filter((c) => c.id !== card.id && c.group_id !== card.group_id);
+
+  const distractors = shuffle(outsideGroup)
+    .slice(0, 3)
+    .map((c) => getTestableWord(c));
+
+  const options = shuffle([correctAnswer, ...distractors]);
+
+  return {
+    type: "synonym",
+    card,
+    options,
+    correctAnswer,
   };
 }

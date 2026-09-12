@@ -164,14 +164,18 @@ export default function TestModePage() {
       ? "Bu kelimenin Türkçe anlamı nedir?"
       : current?.type === "mcq_tr_to_fr"
         ? "Bu anlama gelen Fransızca kelime hangisi?"
-        : "Boşluğu doğru kelimeyle tamamla:";
+        : current?.type === "synonym"
+          ? "Bu kelimeyle aynı anlam grubundan olan hangisi?"
+          : "Boşluğu doğru kelimeyle tamamla:";
 
   const promptHeading =
     current?.type === "mcq_fr_to_tr"
       ? getTestableWord(current.card)
       : current?.type === "mcq_tr_to_fr"
         ? current.card.meaning
-        : current?.blankedSentence;
+        : current?.type === "synonym"
+          ? getTestableWord(current.card)
+          : current?.blankedSentence;
 
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-slate-950 px-6 py-12">
