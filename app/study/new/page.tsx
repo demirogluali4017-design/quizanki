@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { fetchAllRows } from "@/lib/fetchAll";
 import { calculateSM2 } from "@/lib/sm2";
 import { logDailyActivity } from "@/lib/dailyActivity";
 import { Flashcard, SelfAssessment } from "@/types";
@@ -55,17 +56,11 @@ export default function NewWordsModePage() {
       setAutoPromoteEnabled(settings.auto_promote_enabled ?? true);
     }
 
-    const { data, error } = await supabase
-      .from("flashcards")
-      .select("*")
-      .eq("in_learning_phase", true);
+    const cards = await fetchAllRows<Flashcard>((from, to) =>
+      supabase.from("flashcards").select("*").eq("in_learning_phase", true).range(from, to)
+    );
 
-    if (error || !data) {
-      setPhase("empty");
-      return;
-    }
-
-    setAllNewCards(data as Flashcard[]);
+    setAllNewCards(cards);
   }, []);
 
   useEffect(() => {

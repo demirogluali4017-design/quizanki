@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { fetchAllRows } from "@/lib/fetchAll";
 import { buildDailyPackage } from "@/lib/studyEngine";
 import { Flashcard } from "@/types";
 
@@ -8,8 +9,9 @@ export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
 async function getPackageSize() {
-  const { data, error } = await supabase.from("flashcards").select("*");
-  const cards = (error || !data ? [] : data) as Flashcard[];
+  const cards = await fetchAllRows<Flashcard>((from, to) =>
+    supabase.from("flashcards").select("*").range(from, to)
+  );
   const pkg = buildDailyPackage(cards);
   const newCount = cards.filter((c) => c.repetitions === 0).length;
   return { totalCount: pkg.totalCount, cardCount: cards.length, newCount };

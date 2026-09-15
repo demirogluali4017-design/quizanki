@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { fetchAllRows } from "@/lib/fetchAll";
 import { buildDailyPackage } from "@/lib/studyEngine";
 import { computeStreaks } from "@/lib/dailyActivity";
 import { Flashcard } from "@/types";
@@ -9,8 +10,9 @@ export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
 async function getDashboardData() {
-  const { data, error } = await supabase.from("flashcards").select("*");
-  const cards = (error || !data ? [] : data) as Flashcard[];
+  const cards = await fetchAllRows<Flashcard>((from, to) =>
+    supabase.from("flashcards").select("*").range(from, to)
+  );
 
   const pkg = buildDailyPackage(cards);
 

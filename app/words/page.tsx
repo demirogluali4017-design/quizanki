@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { fetchAllRows } from "@/lib/fetchAll";
 import { Flashcard, WordGroup } from "@/types";
 import {
   deriveLearningStage,
@@ -40,11 +41,13 @@ export default function WordsPage() {
 
   async function fetchAll() {
     setLoading(true);
-    const [{ data: wordData }, { data: groupData }] = await Promise.all([
-      supabase.from("flashcards").select("*").order("created_at", { ascending: false }),
+    const [wordData, { data: groupData }] = await Promise.all([
+      fetchAllRows<Flashcard>((from, to) =>
+        supabase.from("flashcards").select("*").order("created_at", { ascending: false }).range(from, to)
+      ),
       supabase.from("word_groups").select("*").order("name", { ascending: true }),
     ]);
-    if (wordData) setWords(wordData as Flashcard[]);
+    setWords(wordData);
     if (groupData) setGroups(groupData as WordGroup[]);
     setLoading(false);
   }
@@ -182,6 +185,27 @@ export default function WordsPage() {
 
     setBulkBusy(false);
     setBulkGroupValue("__pick__");
+    setSelectedIds(new Set());
+  }
+
+  async function handleBulkDelete() {
+    if (selectedIds.size === 0) return;
+    const confirmed = confirm(`${selectedIds.size} kelimeyi kalıcı olarak silmek istediğine emin misin? Bu işlem geri alınamaz.`);
+    if (!confirmed) return;
+
+    setBulkBusy(true);
+    const ids = Array.from(selectedIds);
+    const { error } = await supabase.from("flashcards").delete().in("id", ids);
+
+    if (error) {
+      alert("Silinemedi: " + error.message);
+      setBulkBusy(false);
+      return;
+    }
+
+    const idSet = new Set(ids);
+    setWords((prev) => prev.filter((w) => !idSet.has(w.id)));
+    setBulkBusy(false);
     setSelectedIds(new Set());
   }
 
@@ -331,6 +355,14 @@ export default function WordsPage() {
                 className="text-xs font-medium px-4 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
               >
                 {bulkBusy ? "Uygulanıyor..." : "Uygula"}
+              </button>
+
+              <button
+                onClick={handleBulkDelete}
+                disabled={selectedIds.size === 0 || bulkBusy}
+                className="text-xs font-medium px-4 py-1.5 rounded-lg bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900 disabled:opacity-50 transition-colors"
+              >
+                🗑️ Seçilenleri Sil
               </button>
             </div>
           </div>
