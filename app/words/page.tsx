@@ -94,6 +94,24 @@ export default function WordsPage() {
     );
   }, [words, search, filter]);
 
+  // Performans: 1000+ kelimeyi (her satırda bir grup <select>'i ile)
+  // aynı anda DOM'a basmak taramayı kasıyordu. Bunun yerine tek
+  // seferde en fazla pageSize kadar satır render ediliyor.
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
+
+  useEffect(() => {
+    setPage(0);
+  }, [search, filter, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredWords.length / pageSize));
+  const safePage = Math.min(page, totalPages - 1);
+
+  const pagedWords = useMemo(
+    () => filteredWords.slice(safePage * pageSize, safePage * pageSize + pageSize),
+    [filteredWords, safePage, pageSize]
+  );
+
   const weakCount = useMemo(() => words.filter((w) => w.is_weak).length, [words]);
   const groupedCount = useMemo(() => words.filter((w) => w.group_id).length, [words]);
 
@@ -598,14 +616,14 @@ export default function WordsPage() {
                     Yükleniyor...
                   </td>
                 </tr>
-              ) : filteredWords.length === 0 ? (
+              ) : pagedWords.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-6 text-center text-slate-400 dark:text-slate-500">
                     Kelime bulunamadı.
                   </td>
                 </tr>
               ) : (
-                filteredWords.map((w) => {
+                pagedWords.map((w) => {
                   const stage = deriveLearningStage(w);
                   const status = deriveCardStatus(w);
                   const isEditing = editingId === w.id;
@@ -741,13 +759,54 @@ export default function WordsPage() {
           </table>
         </div>
 
+        {/* Sayfalama */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <span>Sayfa başına:</span>
+            {[25, 50, 100].map((size) => (
+              <button
+                key={size}
+                onClick={() => setPageSize(size)}
+                className={`px-2 py-1 rounded-md border transition-colors ${
+                  pageSize === size
+                    ? "bg-indigo-600 text-white border-indigo-600"
+                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                }`}
+              >
+                {size}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 text-xs">
+            <button
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={safePage === 0}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40"
+            >
+              ← Önceki
+            </button>
+            <span className="text-slate-500 dark:text-slate-400">
+              Sayfa {safePage + 1} / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={safePage >= totalPages - 1}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40"
+            >
+              Sonraki →
+            </button>
+          </div>
+        </div>
+
         <p className="text-xs text-slate-400 dark:text-slate-500">
-          Toplam {filteredWords.length} kelime gösteriliyor. &apos;Çoklu Seç&apos; ile birden fazla
-          kelimeyi tek seferde gruplayabilirsin. Bir kelimeyi düzenlemek için &apos;Düzenle&apos;ye
-          tıkla.
+          Toplam {filteredWords.length} kelime bulundu (bu sayfada {pagedWords.length} tanesi
+          gösteriliyor). &apos;Çoklu Seç&apos; ile filtredeki TÜM kelimeleri (sayfa sınırı olmadan)
+          seçip gruplayabilirsin. Bir kelimeyi düzenlemek için &apos;Düzenle&apos;ye tıkla.
         </p>
       </div>
     </main>
+
   );
 }
 
