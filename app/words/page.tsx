@@ -151,6 +151,58 @@ export default function WordsPage() {
   }
  
   // ============================================================
+  // Ücretsiz gruplama — Gemini KULLANMAZ. Sadece Türkçe anlamı
+  // BİREBİR (boşluk/büyük-küçük harf farkı hariç) aynı olan grupsuz
+  // kelimeleri eşleştirir. Anlamı farklı ifadelerle yazılmış gerçek
+  // eş anlamlıları YAKALAMAZ — onun için "Otomatik Grupla (AI)" gerekir.
+  // ============================================================
+  async function handleGroupByExactMeaning() {
+    const ungrouped = words.filter((w) => !w.group_id);
+    if (ungrouped.length < 2) {
+      alert("Gruplanacak yeterli grupsuz kelime yok.");
+      return;
+    }
+ 
+    const buckets = new Map<string, Flashcard[]>();
+    for (const w of ungrouped) {
+      const key = w.meaning.trim().toLowerCase().replace(/\s+/g, " ");
+      if (!key) continue;
+      const list = buckets.get(key) ?? [];
+      list.push(w);
+      buckets.set(key, list);
+    }
+ 
+    const clusters = [...buckets.values()].filter((list) => list.length >= 2);
+    if (clusters.length === 0) {
+      alert("Birebir aynı anlama sahip grupsuz kelime çifti bulunamadı. 'Otomatik Grupla (AI)' yakın anlamlıları yakalayabilir.");
+      return;
+    }
+ 
+    setAutoGrouping(true);
+    let groupsCreated = 0;
+    let wordsGrouped = 0;
+ 
+    try {
+      for (const cluster of clusters) {
+        const meaningLabel = cluster[0].meaning.trim();
+ 
+        // Aynı isimde bir grup zaten varsa onu kullan, yoksa oluştur
+        const existing = groups.find((g) => g.name.trim().toLowerCase() === meaningLabel.toLowerCase());
+        const group = existing ?? (await createGroup(meaningLabel));
+        if (!group) continue;
+ 
+        await updateWordGroup(cluster.map((w) => w.id), group.id);
+        groupsCreated += existing ? 0 : 1;
+        wordsGrouped += cluster.length;
+      }
+ 
+      alert(`✅ ${groupsCreated} yeni grup, ${wordsGrouped} kelime birebir anlam eşleşmesiyle gruplandı (Gemini kullanılmadı, kotan etkilenmedi).`);
+    } finally {
+      setAutoGrouping(false);
+    }
+  }
+ 
+  // ============================================================
   // Otomatik gruplama (AI) — istemci, tek-parça işleyen endpoint'i
   // ardışık olarak çağırır. Her çağrı hızlı (tek batch), zaman
   // aşımına takılmaz; ekranda gerçek zamanlı ilerleme gösterilir.
@@ -371,6 +423,14 @@ export default function WordsPage() {
  
           <div className="ml-auto flex items-center gap-2">
             <button
+              onClick={handleGroupByExactMeaning}
+              disabled={autoGrouping}
+              className="text-xs font-medium px-3 py-1.5 rounded-full border bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-emerald-300 disabled:opacity-50 transition-colors"
+              title="Türkçe anlamı birebir aynı olan kelimeleri Gemini kullanmadan, ücretsiz gruplar"
+            >
+              🔤 Birebir Anlamları Grupla (Ücretsiz)
+            </button>
+            <button
               onClick={handleAutoGroup}
               disabled={autoGrouping}
               className="text-xs font-medium px-3 py-1.5 rounded-full border bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-indigo-300 disabled:opacity-50 transition-colors"
@@ -379,7 +439,7 @@ export default function WordsPage() {
                 ? autoGroupProgress
                   ? `🤖 Parça ${autoGroupProgress.batch} · ${autoGroupProgress.groupsCreated} grup · ${autoGroupProgress.wordsGrouped} kelime`
                   : "🤖 Başlıyor..."
-                : "🤖 Otomatik Grupla (AI)"}
+                : "🤖 Yakın Anlamları Grupla (AI)"}
             </button>
             <button
               onClick={toggleSelectionMode}
