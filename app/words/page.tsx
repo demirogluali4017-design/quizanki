@@ -26,6 +26,12 @@ export default function WordsPage() {
   const [groups, setGroups] = useState<WordGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [autoGrouping, setAutoGrouping] = useState(false);
+  const [autoGroupProgress, setAutoGroupProgress] = useState<{
+    batch: number;
+    groupsCreated: number;
+    wordsGrouped: number;
+    remaining: number;
+  } | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterTab>("all");
  
@@ -145,8 +151,12 @@ export default function WordsPage() {
   }
  
   // ============================================================
-  // Otomatik gruplama (AI)
+  // Otomatik gruplama (AI) — istemci, tek-parça işleyen endpoint'i
+  // ardışık olarak çağırır. Her çağrı hızlı (tek batch), zaman
+  // aşımına takılmaz; ekranda gerçek zamanlı ilerleme gösterilir.
   // ============================================================
+  const MAX_AUTO_GROUP_ITERATIONS = 60; // kota güvenliği için üst sınır
+ 
   async function handleAutoGroup() {
     const ungroupedCount = words.length - groupedCount;
     if (ungroupedCount < 2) {
@@ -154,30 +164,52 @@ export default function WordsPage() {
       return;
     }
  
-    const estimatedBatches = Math.ceil(ungroupedCount / 150);
     const confirmed = confirm(
-      `${ungroupedCount} grupsuz kelime Gemini ile analiz edilecek (yaklaşık ${estimatedBatches} istek, günlük kotanı etkiler). Devam edilsin mi?`
+      `${ungroupedCount} grupsuz kelime Gemini ile parça parça analiz edilecek. Her parça ~80 kelime, günlük kotanı etkiler. Devam edilsin mi?`
     );
     if (!confirmed) return;
  
     setAutoGrouping(true);
-    try {
-      const res = await fetch("/api/auto-group", { method: "POST" });
-      const data = await res.json();
+    let totalGroups = 0;
+    let totalWords = 0;
+    let iteration = 0;
+    const allErrors: string[] = [];
  
-      if (!res.ok) {
-        throw new Error(data.error || "Bilinmeyen hata");
+    try {
+      while (iteration < MAX_AUTO_GROUP_ITERATIONS) {
+        iteration += 1;
+        const res = await fetch("/api/auto-group", { method: "POST" });
+        const data = await res.json();
+ 
+        if (!res.ok) {
+          allErrors.push(data.error || "Bilinmeyen hata");
+          break;
+        }
+ 
+        totalGroups += data.groupsCreated ?? 0;
+        totalWords += data.wordsGrouped ?? 0;
+        if (data.errors) allErrors.push(...data.errors);
+ 
+        setAutoGroupProgress({
+          batch: iteration,
+          groupsCreated: totalGroups,
+          wordsGrouped: totalWords,
+          remaining: data.remainingUngrouped ?? 0,
+        });
+ 
+        if (data.done) break;
       }
  
       await fetchAll();
       alert(
-        `✅ ${data.groupsCreated} yeni grup oluşturuldu, ${data.wordsGrouped} kelime gruplandı.` +
-          (data.errors ? `\n\n⚠️ Bazı batch'lerde hata oluştu: ${data.errors.join(", ")}` : "")
+        `✅ Tamamlandı — ${totalGroups} yeni grup, ${totalWords} kelime gruplandı (${iteration} istek).` +
+          (allErrors.length > 0 ? `\n\n⚠️ Bazı parçalarda hata: ${allErrors.slice(0, 3).join(", ")}` : "")
       );
     } catch (err) {
       alert("Otomatik gruplama başarısız: " + (err instanceof Error ? err.message : "Bilinmeyen hata"));
     } finally {
       setAutoGrouping(false);
+      setAutoGroupProgress(null);
     }
   }
  
@@ -343,7 +375,11 @@ export default function WordsPage() {
               disabled={autoGrouping}
               className="text-xs font-medium px-3 py-1.5 rounded-full border bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-indigo-300 disabled:opacity-50 transition-colors"
             >
-              {autoGrouping ? "🤖 Gruplanıyor..." : "🤖 Otomatik Grupla (AI)"}
+              {autoGrouping
+                ? autoGroupProgress
+                  ? `🤖 Parça ${autoGroupProgress.batch} · ${autoGroupProgress.groupsCreated} grup · ${autoGroupProgress.wordsGrouped} kelime`
+                  : "🤖 Başlıyor..."
+                : "🤖 Otomatik Grupla (AI)"}
             </button>
             <button
               onClick={toggleSelectionMode}
@@ -621,4 +657,3 @@ function FilterButton({
     </button>
   );
 }
- 
