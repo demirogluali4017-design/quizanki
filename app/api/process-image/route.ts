@@ -2,28 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { createServiceRoleClient } from "@/lib/supabase";
 import { ExtractedWord } from "@/types";
-
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
 const EXTRACTION_PROMPT = `Bu görsel(ler)deki Fransızca kelimeleri çıkar. Birden fazla görsel verildiyse HEPSİNİ işle ve TEK bir birleşik JSON array olarak döndür (görseller ayrı sayfalar olabilir, sırayla işle). Kurallara KESİNLİKLE uy:
-
 1. "preposition" alanı: Kelimenin (özellikle fiillerin) görselde geçen TÜM edat kalıplarını EKSİKSİZ ve BİREBİR yaz.
    - Görselde "qch" (quelque chose) veya "qn" (quelqu'un) gibi kısaltmalar varsa bunları da kalıba dahil et, çıkarma. Örnek: "penser à qn/qch" görüldüyse preposition alanına tam olarak "à qn/qch" yaz, sadece "à" yazma.
    - Bir fiilin birden fazla edat kalıbı varsa (örn. "parler de qch à qn") HEPSİNİ kaçırmadan yaz, virgülle ayırarak listele. Örnek: "de qch, à qn".
    - Kelimenin yanında edat geçiyorsa bu alanı ASLA boş bırakma ve ASLA kısaltma; edat yoksa boş string ("") bırak.
-
 2. "meaning" alanı: Eğer görselde kelimenin Türkçe anlamı zaten YAZILI olarak veriliyorsa (defter/kitap sayfasında karşısında yazan Türkçe kelime/ifade), onu BİREBİR, HİÇBİR ŞEKİLDE DEĞİŞTİRMEDEN, PARAFRAZ YAPMADAN, EŞ ANLAMLISINI KULLANMADAN aynen yaz — kendi yorumunu veya alternatif çevirini KATMA. Görselde yazılı bir anlam YOKSA (sadece kelimenin kendisi varsa) o zaman doğru ve yaygın Türkçe anlamını sen üret.
-
 3. "example_sentence" alanı: SADECE ve KESİNLİKLE Fransızca bir örnek cümle yaz. İngilizce veya başka bir dilde örnek cümle YAZMA. Görselde kelimeyle birlikte bir örnek cümle varsa onu birebir kullan; yoksa kelimeye uygun basit, doğru dilbilgisiyle yazılmış yeni bir Fransızca cümle üret.
-
 4. Aynı kelime birden fazla görselde tekrar geçiyorsa SADECE BİR KEZ ekle (tekrar eden kaydı çıkarma).
-
 Yanıtı sadece ve strictly JSON array formatında döndür, başka hiçbir açıklama ekleme.
-
 Format:
 [{"word": "", "preposition": "", "meaning": "", "example_sentence": ""}]`;
-
 function extractJsonArray(rawText: string): ExtractedWord[] {
   const cleaned = rawText
     .trim()
@@ -31,43 +22,32 @@ function extractJsonArray(rawText: string): ExtractedWord[] {
     .replace(/^```\s*/i, "")
     .replace(/```\s*$/i, "")
     .trim();
-
   const parsed = JSON.parse(cleaned);
-
   if (!Array.isArray(parsed)) {
     throw new Error("Gemini yanıtı bir JSON array değil.");
   }
-
   return parsed as ExtractedWord[];
 }
-
 function collectApiKeys(): string[] {
   const keys: string[] = [];
-
   if (process.env.GEMINI_API_KEY) {
     keys.push(process.env.GEMINI_API_KEY);
   }
-
   let i = 2;
-
   while (process.env[`GEMINI_API_KEY_${i}`]) {
     keys.push(process.env[`GEMINI_API_KEY_${i}`] as string);
     i++;
   }
-
   return keys;
 }
-
 function isRetryableError(err: unknown): boolean {
   const error = err as {
     message?: string;
     status?: number | string;
     code?: number | string;
   };
-
   const message = String(error?.message ?? err ?? "").toUpperCase();
   const status = String(error?.status ?? error?.code ?? "");
-
   return (
     status === "429" ||
     status === "500" ||
@@ -80,21 +60,17 @@ function isRetryableError(err: unknown): boolean {
     message.includes("SERVICE_UNAVAILABLE")
   );
 }
-
 function getRetryDelay(attempt: number): number {
   const baseDelay = 1000 * Math.pow(2, attempt);
   const jitter = Math.floor(Math.random() * 500);
-
   return baseDelay + jitter;
 }
-
 async function generateWithRetry(
   ai: GoogleGenAI,
   contents: any,
   maxRetries = 3
 ) {
   let lastError: unknown = null;
-
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await ai.models.generateContent({
@@ -107,36 +83,28 @@ async function generateWithRetry(
       });
     } catch (err) {
       lastError = err;
-
       if (!isRetryableError(err)) {
         throw err;
       }
-
       if (attempt === maxRetries) {
         throw err;
       }
-
       const delay = getRetryDelay(attempt);
-
       console.warn(
         `Gemini geçici hata verdi. Retry ${
           attempt + 1
         }/${maxRetries}. ${delay}ms sonra tekrar denenecek.`
       );
-
       await new Promise((resolve) =>
         setTimeout(resolve, delay)
       );
     }
   }
-
   throw lastError;
 }
-
 export async function POST(request: NextRequest) {
   try {
     const apiKeys = collectApiKeys();
-
     if (apiKeys.length === 0) {
       return NextResponse.json(
         {
@@ -146,11 +114,8 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-
     const formData = await request.formData();
-
     const files = formData.getAll("images") as File[];
-
     if (!files || files.length === 0) {
       return NextResponse.json(
         {
@@ -160,9 +125,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
     const MAX_IMAGES = 3;
-
     if (files.length > MAX_IMAGES) {
       return NextResponse.json(
         {
@@ -171,13 +134,11 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
     const allowedTypes = [
       "image/jpeg",
       "image/jpg",
       "image/png",
     ];
-
     for (const file of files) {
       if (!allowedTypes.includes(file.type)) {
         return NextResponse.json(
@@ -188,12 +149,10 @@ export async function POST(request: NextRequest) {
         );
       }
     }
-
     const imageParts = await Promise.all(
       files.map(async (file) => {
         const arrayBuffer = await file.arrayBuffer();
         const base64 = Buffer.from(arrayBuffer).toString("base64");
-
         return {
           inlineData: {
             mimeType: file.type,
@@ -202,7 +161,6 @@ export async function POST(request: NextRequest) {
         };
       })
     );
-
     const contents = [
       {
         role: "user",
@@ -214,11 +172,9 @@ export async function POST(request: NextRequest) {
         ],
       },
     ];
-
     let rawText: string | undefined;
     let lastError: unknown = null;
     let allRetryable = true;
-
     for (
       let keyIndex = 0;
       keyIndex < apiKeys.length;
@@ -227,58 +183,45 @@ export async function POST(request: NextRequest) {
       const ai = new GoogleGenAI({
         apiKey: apiKeys[keyIndex],
       });
-
       try {
         console.log(
           `Gemini API key #${keyIndex + 1}/${apiKeys.length} deneniyor...`
         );
-
         const response = await generateWithRetry(
           ai,
           contents,
           3
         );
-
         rawText = response.text;
         lastError = null;
-
         console.log(
           `Gemini API key #${keyIndex + 1} başarılı.`
         );
-
         break;
       } catch (err) {
         lastError = err;
-
         if (!isRetryableError(err)) {
           allRetryable = false;
-
           console.error(
             `Gemini API key #${keyIndex + 1} geri döndürülemez hata verdi:`,
             err
           );
-
           throw err;
         }
-
         const hasNextKey =
           keyIndex < apiKeys.length - 1;
-
         if (hasNextKey) {
           console.warn(
             `Gemini API key #${keyIndex + 1} başarısız oldu. Sıradaki key deneniyor.`
           );
-
           continue;
         }
-
         console.error(
           "Tüm Gemini API key'leri başarısız oldu:",
           err
         );
       }
     }
-
     if (!rawText) {
       if (allRetryable && lastError) {
         return NextResponse.json(
@@ -290,15 +233,12 @@ export async function POST(request: NextRequest) {
           { status: 503 }
         );
       }
-
       throw (
         lastError ??
         new Error("Gemini boş yanıt döndürdü.")
       );
     }
-
     let extractedWords: ExtractedWord[];
-
     try {
       extractedWords = extractJsonArray(rawText);
     } catch (parseError) {
@@ -308,7 +248,6 @@ export async function POST(request: NextRequest) {
         "Ham yanıt:",
         rawText
       );
-
       return NextResponse.json(
         {
           error:
@@ -318,7 +257,6 @@ export async function POST(request: NextRequest) {
         { status: 502 }
       );
     }
-
     if (extractedWords.length === 0) {
       return NextResponse.json(
         {
@@ -329,7 +267,6 @@ export async function POST(request: NextRequest) {
         { status: 200 }
       );
     }
-
     const rowsToInsert = extractedWords.map((item) => ({
       word: item.word?.trim() ?? "",
       preposition:
@@ -337,7 +274,6 @@ export async function POST(request: NextRequest) {
       meaning: item.meaning?.trim() ?? "",
       example_sentence:
         item.example_sentence?.trim() ?? "",
-
       repetitions: 0,
       interval: 1,
       ease_factor: 2.5,
@@ -345,10 +281,8 @@ export async function POST(request: NextRequest) {
       in_learning_phase: false,
       learning_streak: 0,
     }));
-
     const supabaseAdmin =
       createServiceRoleClient();
-
     const {
       data: insertedRows,
       error: insertError,
@@ -356,13 +290,11 @@ export async function POST(request: NextRequest) {
       .from("flashcards")
       .insert(rowsToInsert)
       .select();
-
     if (insertError) {
       console.error(
         "Supabase insert hatası:",
         insertError
       );
-
       return NextResponse.json(
         {
           error:
@@ -372,7 +304,6 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-
     return NextResponse.json(
       {
         success: true,
@@ -386,12 +317,10 @@ export async function POST(request: NextRequest) {
       "process-image genel hata:",
       err
     );
-
     const message =
       err instanceof Error
         ? err.message
         : "Bilinmeyen hata";
-
     if (isRetryableError(err)) {
       return NextResponse.json(
         {
@@ -403,7 +332,6 @@ export async function POST(request: NextRequest) {
         { status: 503 }
       );
     }
-
     return NextResponse.json(
       {
         error:
