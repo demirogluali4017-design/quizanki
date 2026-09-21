@@ -461,7 +461,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-Bu sürümdeki temel fark: Gemini 503 verdiğinde artık hemen diğer key’e atlamıyor. Önce aynı key üzerinde 1 → 2 → 4 saniyelik artan beklemelerle 3 kez yeniden deniyor, sonra diğer key’e geçiyor.
-
-Bir de son önemli nokta: gemini-3.6-flash adının senin Google AI projesinde gerçekten erişilebilir olduğundan emin ol. Bugünkü 503’nin nedeni bu loga göre model yoğunluğu, ama model adı/erişimi ayrıca doğrulanması gereken bir konu.
