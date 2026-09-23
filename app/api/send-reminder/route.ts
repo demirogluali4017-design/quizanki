@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase";
 import { buildDailyPackage } from "@/lib/studyEngine";
+import { requireUser } from "@/lib/require-user";
 import { Flashcard } from "@/types";
 
 export const runtime = "nodejs";
@@ -106,6 +107,41 @@ export async function GET(request: NextRequest) {
     const message = err instanceof Error ? err.message : "Bilinmeyen hata";
     console.error("send-reminder hata:", err);
     return NextResponse.json({ error: "Hatırlatıcı gönderilemedi.", details: message }, { status: 500 });
+  }
+}
+
+export async function POST() {
+  const auth = await requireUser();
+  if (auth.response) return auth.response;
+
+  const resendKey = process.env.RESEND_API_KEY;
+  const emailTo = process.env.REMINDER_EMAIL_TO;
+  const emailFrom = process.env.REMINDER_EMAIL_FROM;
+  if (!resendKey || !emailTo || !emailFrom) {
+    return NextResponse.json(
+      { error: "E-posta ayarı eksik. RESEND_API_KEY, REMINDER_EMAIL_FROM ve REMINDER_EMAIL_TO gerekli." },
+      { status: 500 }
+    );
+  }
+
+  try {
+    const supabaseAdmin = createServiceRoleClient();
+    const { data, error } = await supabaseAdmin.from("flashcards").select("*");
+    if (error || !data) {
+      return NextResponse.json({ error: "Kelimeler okunamadı.", details: error?.message }, { status: 500 });
+    }
+    const email = buildEmail(buildDailyPackage(data as Flashcard[]), "noon");
+    await sendEmail({
+      apiKey: resendKey,
+      from: emailFrom,
+      to: emailTo,
+      subject: `Deneme: ${email.subject}`,
+      text: email.text,
+    });
+    return NextResponse.json({ sent: true, to: emailTo });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Bilinmeyen hata";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
