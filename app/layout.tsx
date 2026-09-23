@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/ThemeProvider";
-import SiteHeader from "@/components/SiteHeader";
+import FloatingControls from "@/components/FloatingControls";
 
 const sans = Source_Sans_3({
   subsets: ["latin", "latin-ext"],
@@ -17,8 +17,8 @@ const display = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Quizanki",
-  description: "Fotoğraftan Fransızca kelime çıkaran, SM-2 aralıklı tekrar destekli çalışma masası",
+  title: "Flashcard | Anki Klonu",
+  description: "Fotoğraftan kelime çıkaran, SM-2 aralıklı tekrar destekli flashcard uygulaması",
 };
 
 const themeInitScript = `
@@ -43,9 +43,9 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className={`${sans.className} bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-50`}>
+      <body className={`${sans.className} bg-slate-50 dark:bg-slate-950 transition-colors`}>
         <ThemeProvider>
-          <SiteHeader />
+          <FloatingControls />
           {children}
         </ThemeProvider>
       </body>

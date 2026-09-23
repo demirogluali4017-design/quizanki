@@ -16,7 +16,7 @@ export default function UploadPage() {
     <main className="min-h-screen bg-slate-50 dark:bg-slate-950 px-6 py-12">
       <div className="max-w-3xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Kart yükle</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">⬆️ Kart Yükle</h1>
           <Link href="/" className="text-sm text-indigo-600 hover:underline">
             ← Ana sayfaya dön
           </Link>
@@ -24,10 +24,10 @@ export default function UploadPage() {
 
         <div className="flex gap-2">
           <TabButton active={tab === "photo"} onClick={() => setTab("photo")}>
-            Fotoğraf yükle
+            📷 Fotoğraf Yükle
           </TabButton>
           <TabButton active={tab === "manual"} onClick={() => setTab("manual")}>
-            Manuel ekle
+            ✍️ Manuel Ekle
           </TabButton>
         </div>
 

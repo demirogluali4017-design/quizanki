@@ -472,7 +472,7 @@ export default function WordsPage() {
     <main className="min-h-screen bg-slate-50 dark:bg-slate-950 px-6 py-12">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Tüm kelimeler</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">📋 Tüm Kelimeler</h1>
           <Link href="/" className="text-sm text-indigo-600 hover:underline">
             ← Ana sayfaya dön
           </Link>
@@ -483,16 +483,16 @@ export default function WordsPage() {
             Tümü ({words.length})
           </FilterButton>
           <FilterButton active={filter === "weak"} onClick={() => setFilter("weak")}>
-            Zayıf ({weakCount})
+            🟠 Zayıf ({weakCount})
           </FilterButton>
           <FilterButton active={filter === "new"} onClick={() => setFilter("new")}>
             Yeni
           </FilterButton>
           <FilterButton active={filter === "long_term"} onClick={() => setFilter("long_term")}>
-            Uzun süreli
+            🧠 Uzun Süreli Hafıza
           </FilterButton>
           <FilterButton active={filter === "grouped"} onClick={() => setFilter("grouped")}>
-            Gruplu ({groupedCount})
+            🔗 Gruplu ({groupedCount})
           </FilterButton>
           <FilterButton active={filter === "ungrouped"} onClick={() => setFilter("ungrouped")}>
             Grupsuz ({words.length - groupedCount})

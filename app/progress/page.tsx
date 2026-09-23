@@ -137,7 +137,7 @@ export default async function ProgressPage() {
     <main className="min-h-screen bg-slate-50 dark:bg-slate-950 px-6 py-12">
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">İlerleme</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">📈 İlerleme</h1>
           <Link href="/" className="text-sm text-indigo-600 hover:underline">
             ← Ana sayfaya dön
           </Link>
@@ -150,8 +150,8 @@ export default async function ProgressPage() {
           <SummaryCard label="Bugün Tekrar" value={todayReviews} />
           <SummaryCard label="Toplam Tekrar" value={totalReviews} />
           <SummaryCard label="Başarı Oranı" value={successRate !== null ? `%${successRate}` : "—"} />
-          <SummaryCard label="Güncel seri" value={streaks.current} />
-          <SummaryCard label="En uzun seri" value={streaks.longest} />
+          <SummaryCard label="Güncel Seri" value={`🔥 ${streaks.current}`} />
+          <SummaryCard label="En Uzun Seri" value={`🏆 ${streaks.longest}`} />
           <SummaryCard label="Zayıf Kelime" value={weakCount} accent="text-orange-600" />
         </div>
 
@@ -291,7 +291,7 @@ function SummaryCard({
 }) {
   return (
     <div className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-4 text-center">
-      <p className={`text-xl font-bold tabular-nums ${accent ?? "text-slate-800 dark:text-slate-100"}`}>{value}</p>
+      <p className={`text-xl font-bold ${accent ?? "text-slate-800 dark:text-slate-100"}`}>{value}</p>
       <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{label}</p>
     </div>
   );

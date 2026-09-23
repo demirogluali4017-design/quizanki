@@ -183,7 +183,7 @@ export default function TestModePage() {
     <main className="min-h-screen bg-slate-50 dark:bg-slate-950 px-6 py-12">
       <div className="max-w-2xl mx-auto space-y-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Test</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">📝 Test Modu</h1>
           <Link href="/study" className="text-sm text-indigo-600 hover:underline">
             ← Mod seçimine dön
           </Link>
