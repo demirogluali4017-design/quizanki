@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
+import { requireUser } from "@/lib/require-user";
 import { createServiceRoleClient } from "@/lib/supabase";
 
 export const runtime = "nodejs";
@@ -125,6 +126,9 @@ async function callGemini(prompt: string, apiKeys: string[]): Promise<GeminiDeci
  * (parçalar arası eş anlamlı kaçırma sorunu böyle çözülüyor).
  */
 export async function POST(_request: NextRequest) {
+  const auth = await requireUser();
+  if (auth.response) return auth.response;
+
   try {
     const apiKeys = collectApiKeys();
     if (apiKeys.length === 0) {

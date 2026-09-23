@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
+import { requireUser } from "@/lib/require-user";
 import { createServiceRoleClient } from "@/lib/supabase";
 import { ExtractedWord } from "@/types";
 export const runtime = "nodejs";
@@ -103,6 +104,9 @@ async function generateWithRetry(
   throw lastError;
 }
 export async function POST(request: NextRequest) {
+  const auth = await requireUser();
+  if (auth.response) return auth.response;
+
   try {
     const apiKeys = collectApiKeys();
     if (apiKeys.length === 0) {

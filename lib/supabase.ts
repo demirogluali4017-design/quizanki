@@ -1,3 +1,4 @@
+import { createBrowserClient } from "@supabase/ssr";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -7,9 +8,9 @@ export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 /**
  * Ortam değişkeni yokken (yerel önizleme) sorgular boş döner.
- * Anahtarlar tanımlıyken gerçek istemci kullanılır; davranış değişmez.
+ * Anahtarlar tanımlıyken gerçek istemci kullanılır.
  */
-function createUnconfiguredClient(): SupabaseClient {
+export function createUnconfiguredClient(): SupabaseClient {
   const settled = Promise.resolve({ data: null, error: null, count: 0, status: 200, statusText: "OK" });
   const chain: unknown = new Proxy(function noop() {
     return chain;
@@ -25,25 +26,49 @@ function createUnconfiguredClient(): SupabaseClient {
     },
   });
 
+  const auth = {
+    signInWithPassword: async () => ({
+      data: { user: null, session: null },
+      error: { message: "Supabase yapılandırılmadı" },
+    }),
+    signOut: async () => ({ error: null }),
+    getUser: async () => ({ data: { user: null }, error: null }),
+    getSession: async () => ({ data: { session: null }, error: null }),
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
+  };
+
   return {
     from: () => chain,
+    auth,
   } as unknown as SupabaseClient;
 }
 
-/**
- * Client-side (tarayıcı) kullanımı için Supabase istemcisi.
- * "use client" bileşenlerinde ve genel okuma işlemlerinde kullanılır.
- * Row Level Security (RLS) politikalarına tabidir.
- */
-export const supabase: SupabaseClient = isSupabaseConfigured
-  ? createClient(supabaseUrl as string, supabaseAnonKey as string)
-  : createUnconfiguredClient();
+let browserClient: SupabaseClient | null = null;
+
+function getBrowserClient(): SupabaseClient {
+  if (!isSupabaseConfigured) return createUnconfiguredClient();
+  if (!browserClient) {
+    browserClient = createBrowserClient(supabaseUrl as string, supabaseAnonKey as string);
+  }
+  return browserClient;
+}
 
 /**
- * Server-side (API Route / Server Action) kullanımı için Supabase istemcisi.
+ * Tarayıcı istemcisi. Oturum çerezdedir, böylece middleware kullanıcıyı görür.
+ * Sunucu bileşenleri bunu değil, createSupabaseServerClient kullanır.
+ */
+export const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    const client = getBrowserClient();
+    const value = Reflect.get(client, prop);
+    return typeof value === "function" ? value.bind(client) : value;
+  },
+});
+
+/**
+ * Server-side (API Route) kullanımı için Supabase istemcisi.
  * service_role anahtarını kullanır, bu yüzden RLS'yi bypass eder.
- * SADECE sunucu tarafında (route.ts, server action içinde) import edilmelidir.
- * İstemci (browser) tarafına asla sızdırılmamalıdır.
+ * SADECE sunucu tarafında import edilmelidir.
  */
 export function createServiceRoleClient(): SupabaseClient {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string;

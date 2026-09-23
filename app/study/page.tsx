@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { fetchAllRows } from "@/lib/fetchAll";
 import { buildDailyPackage } from "@/lib/studyEngine";
 import { Flashcard } from "@/types";
@@ -9,6 +9,7 @@ export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
 async function getPackageSize() {
+  const supabase = await createSupabaseServerClient();
   const cards = await fetchAllRows<Flashcard>((from, to) =>
     supabase.from("flashcards").select("*").range(from, to)
   );
