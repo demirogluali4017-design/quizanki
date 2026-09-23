@@ -15,11 +15,17 @@ async function getPackageSize() {
   );
   const pkg = buildDailyPackage(cards);
   const newCount = cards.filter((c) => c.repetitions === 0).length;
-  return { totalCount: pkg.totalCount, cardCount: cards.length, newCount };
+  const groupSizes = new Map<string, number>();
+  for (const card of cards) {
+    if (!card.group_id) continue;
+    groupSizes.set(card.group_id, (groupSizes.get(card.group_id) ?? 0) + 1);
+  }
+  const synonymGroups = [...groupSizes.values()].filter((size) => size >= 2).length;
+  return { totalCount: pkg.totalCount, cardCount: cards.length, newCount, synonymGroups };
 }
 
 export default async function StudyModeSelectPage() {
-  const { totalCount, cardCount, newCount } = await getPackageSize();
+  const { totalCount, cardCount, newCount, synonymGroups } = await getPackageSize();
 
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-slate-950 px-6 py-12">
@@ -67,6 +73,13 @@ export default async function StudyModeSelectPage() {
             title="Eşleştir"
             description="Kelimeyi anlamıyla eşleştir, süreni tut. Kendi en hızlı rekoruna karşı yarış. SM-2'yi etkilemez."
             badge={`${cardCount} kelime havuzu`}
+          />
+          <ModeCard
+            href="/study/synonym"
+            emoji="🔁"
+            title="Eş Anlamlı"
+            description="Aynı gruptaki kelimeleri eşleştir. Kelimeyi Türkçesinden değil, eş anlamlısından hatırla. SM-2'yi etkilemez."
+            badge={synonymGroups > 0 ? `${synonymGroups} grup` : "Henüz eş anlamlı grup yok"}
           />
         </div>
       </div>
