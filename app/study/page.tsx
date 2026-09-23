@@ -21,19 +21,20 @@ export default async function StudyModeSelectPage() {
   const { totalCount, cardCount, newCount } = await getPackageSize();
 
   return (
-    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 px-6 py-12">
-      <div className="max-w-2xl mx-auto space-y-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">🧠 Çalışma Modu Seç</h1>
-          <Link href="/" className="text-sm text-indigo-600 hover:underline">
-            ← Ana sayfaya dön
-          </Link>
+    <main className="min-h-screen bg-slate-50 px-4 py-8 dark:bg-slate-950 sm:px-6 sm:py-12">
+      <div className="mx-auto max-w-2xl space-y-8">
+        <div>
+          <p className="text-xs uppercase tracking-[0.22em] text-indigo-700 dark:text-indigo-300">Çalışma</p>
+          <h1 className="mt-2 text-3xl text-slate-900 dark:text-slate-50 sm:text-4xl">Mod seç</h1>
+          <p className="mt-2 max-w-lg text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+            Öğren motoru tekrarı kaydeder. Diğer modlar sadece pratiktir, SM-2 verisine dokunmaz.
+          </p>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           <ModeCard
             href="/study/learn"
-            emoji="🧠"
+            mark="01"
             title="Öğren"
             recommended
             description="Ana motor — SM-2 aralıklı tekrar, öz-değerlendirme ve karışık soru tipleriyle bilimsel çalışma."
@@ -41,28 +42,28 @@ export default async function StudyModeSelectPage() {
           />
           <ModeCard
             href="/study/new"
-            emoji="🌱"
-            title="Sıfırdan Öğren"
+            mark="02"
+            title="Sıfırdan öğren"
             description="Sadece hiç tekrar edilmemiş kelimeler — mevcut tekrarlarla karışmaz."
             badge={newCount > 0 ? `${newCount} yeni kelime` : "Hiç yeni kelime yok"}
           />
           <ModeCard
             href="/study/cards"
-            emoji="🗂️"
+            mark="03"
             title="Kartlar"
             description="Puansız, serbest gezinme. SM-2 verisine hiç dokunmaz — sadece gözden geçirmek için."
             badge={`${cardCount} kelime`}
           />
           <ModeCard
             href="/study/test"
-            emoji="📝"
+            mark="04"
             title="Test"
             description="Kendini sına — sonunda başarı yüzdeni gösteren hızlı bir sınav modu. SM-2'yi etkilemez."
             badge={`${cardCount} kelime havuzu`}
           />
           <ModeCard
             href="/study/match"
-            emoji="🧩"
+            mark="05"
             title="Eşleştir"
             description="Kelimeyi anlamıyla eşleştir, süreni tut. Kendi en hızlı rekoruna karşı yarış. SM-2'yi etkilemez."
             badge={`${cardCount} kelime havuzu`}
@@ -75,14 +76,14 @@ export default async function StudyModeSelectPage() {
 
 function ModeCard({
   href,
-  emoji,
+  mark,
   title,
   description,
   badge,
   recommended,
 }: {
   href: string;
-  emoji: string;
+  mark: string;
   title: string;
   description: string;
   badge: string;
@@ -91,25 +92,23 @@ function ModeCard({
   return (
     <Link
       href={href}
-      className="block rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-6 hover:border-indigo-400 hover:shadow-md transition-all"
+      className="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-colors hover:border-indigo-400 dark:border-slate-700 dark:bg-slate-800"
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-4">
-          <span className="text-3xl">{emoji}</span>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">{title}</h2>
-              {recommended && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 uppercase tracking-wide">
-                  Önerilen
-                </span>
-              )}
-            </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{description}</p>
+      <div className="flex items-start gap-4">
+        <span className="font-display text-sm tabular-nums text-indigo-700 dark:text-indigo-300">{mark}</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl text-slate-900 dark:text-slate-50">{title}</h2>
+            {recommended && (
+              <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                Önerilen
+              </span>
+            )}
           </div>
+          <p className="mt-1 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{description}</p>
+          <p className="mt-3 text-xs uppercase tracking-[0.14em] text-slate-400">{badge}</p>
         </div>
       </div>
-      <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">{badge}</p>
     </Link>
   );
 }

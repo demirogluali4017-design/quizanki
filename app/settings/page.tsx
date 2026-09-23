@@ -75,7 +75,7 @@ export default function SettingsPage() {
     <main className="min-h-screen bg-slate-50 dark:bg-slate-950 px-6 py-12">
       <div className="max-w-2xl mx-auto space-y-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">⚙️ Ayarlar</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Ayarlar</h1>
           <Link href="/" className="text-sm text-indigo-600 hover:underline">
             ← Ana sayfaya dön
           </Link>
@@ -83,7 +83,7 @@ export default function SettingsPage() {
 
         {/* Görünüm */}
         <section className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-6 space-y-4">
-          <h2 className="font-semibold text-slate-800 dark:text-slate-100">🎨 Görünüm</h2>
+          <h2 className="font-semibold text-slate-800 dark:text-slate-100">Görünüm</h2>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Karanlık Mod</p>
@@ -161,7 +161,7 @@ export default function SettingsPage() {
 
         {/* Sesli Okuma (TTS) */}
         <section className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-6 space-y-5">
-          <h2 className="font-semibold text-slate-800 dark:text-slate-100">🔊 Sesli Telaffuz</h2>
+          <h2 className="font-semibold text-slate-800 dark:text-slate-100">Sesli telaffuz</h2>
 
           {mounted && (
             <>
@@ -201,7 +201,7 @@ export default function SettingsPage() {
                 onClick={testVoice}
                 className="w-full rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium py-2 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors text-sm"
               >
-                🔊 Test Et: &quot;Bonjour, comment ça va ?&quot;
+                Test et: &quot;Bonjour, comment ça va ?&quot;
               </button>
 
               <p className="text-xs text-slate-400 dark:text-slate-500">

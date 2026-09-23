@@ -1,14 +1,24 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Fraunces, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/ThemeProvider";
-import FloatingControls from "@/components/FloatingControls";
+import SiteHeader from "@/components/SiteHeader";
 
-const inter = Inter({ subsets: ["latin"] });
+const sans = Source_Sans_3({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const display = Fraunces({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-display",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
-  title: "Flashcard | Anki Klonu",
-  description: "Fotoğraftan kelime çıkaran, SM-2 aralıklı tekrar destekli flashcard uygulaması",
+  title: "Quizanki",
+  description: "Fotoğraftan Fransızca kelime çıkaran, SM-2 aralıklı tekrar destekli çalışma masası",
 };
 
 const themeInitScript = `
@@ -29,13 +39,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr" suppressHydrationWarning>
+    <html lang="tr" suppressHydrationWarning className={`${sans.variable} ${display.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className={`${inter.className} bg-slate-50 dark:bg-slate-950 dark:bg-slate-950 transition-colors`}>
+      <body className={`${sans.className} bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-50`}>
         <ThemeProvider>
-          <FloatingControls />
+          <SiteHeader />
           {children}
         </ThemeProvider>
       </body>

@@ -56,16 +56,20 @@ export default function SpeakButton({ text, size = "md" }: SpeakButtonProps) {
 
   if (unsupported) return null; // tarayıcı desteklemiyorsa sessizce gizle
 
-  const dimensions = size === "sm" ? "w-7 h-7 text-sm" : "w-9 h-9 text-base";
+  const dimensions = size === "sm" ? "w-10 h-10" : "w-11 h-11";
 
   return (
     <button
       type="button"
       onClick={handleSpeak}
-      className={`${dimensions} rounded-full bg-slate-100 dark:bg-slate-700 hover:bg-indigo-100 dark:hover:bg-indigo-900 flex items-center justify-center transition-colors ${speaking ? "animate-pulse text-indigo-600" : "text-slate-500 dark:text-slate-300"}`}
+      className={`${dimensions} flex items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600 transition-colors hover:border-indigo-400 hover:text-indigo-700 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 ${speaking ? "border-indigo-500 text-indigo-700" : ""}`}
       title="Fransızca telaffuzu dinle"
+      aria-label="Fransızca telaffuzu dinle"
     >
-      🔊
+      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+        <path d="M4 10h3.2L12 6.2v11.6L7.2 14H4v-4z" strokeLinejoin="round" />
+        <path d="M16 9.2a3.8 3.8 0 0 1 0 5.6" strokeLinecap="round" />
+      </svg>
     </button>
   );
 }
