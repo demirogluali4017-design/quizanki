@@ -32,14 +32,20 @@ export async function GET(request: NextRequest) {
 
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const fromNumber = process.env.TWILIO_WHATSAPP_FROM; // örn: whatsapp:+14155238886
-  const toNumber = process.env.REMINDER_WHATSAPP_TO; // örn: whatsapp:+905XXXXXXXXX
+  const fromNumber = process.env.TWILIO_WHATSAPP_FROM;
+  const toNumber = process.env.REMINDER_WHATSAPP_TO;
+  const whatsappReady = Boolean(accountSid && authToken && fromNumber && toNumber);
 
-  if (!accountSid || !authToken || !fromNumber || !toNumber) {
+  const resendKey = process.env.RESEND_API_KEY;
+  const emailTo = process.env.REMINDER_EMAIL_TO;
+  const emailFrom = process.env.REMINDER_EMAIL_FROM;
+  const emailReady = Boolean(resendKey && emailTo && emailFrom);
+
+  if (!whatsappReady && !emailReady) {
     return NextResponse.json(
       {
         error:
-          "Twilio ortam değişkenleri eksik (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM, REMINDER_WHATSAPP_TO).",
+          "Hatırlatma kanalı yok. WhatsApp için Twilio değişkenleri ya da e-posta için RESEND_API_KEY, REMINDER_EMAIL_FROM ve REMINDER_EMAIL_TO gerekli.",
       },
       { status: 500 }
     );
@@ -64,9 +70,34 @@ export async function GET(request: NextRequest) {
     }
 
     const message = buildReminderMessage(pkg);
-    await sendWhatsAppMessage({ accountSid, authToken, fromNumber, toNumber, message });
+    const email = buildEmail(pkg);
 
-    return NextResponse.json({ sent: true, package: summarize(pkg) });
+    if (whatsappReady) {
+      await sendWhatsAppMessage({
+        accountSid: accountSid as string,
+        authToken: authToken as string,
+        fromNumber: fromNumber as string,
+        toNumber: toNumber as string,
+        message,
+      });
+    }
+
+    if (emailReady) {
+      await sendEmail({
+        apiKey: resendKey as string,
+        from: emailFrom as string,
+        to: emailTo as string,
+        subject: email.subject,
+        text: email.text,
+      });
+    }
+
+    return NextResponse.json({
+      sent: true,
+      whatsapp: whatsappReady,
+      email: emailReady,
+      package: summarize(pkg),
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Bilinmeyen hata";
     console.error("send-reminder hata:", err);
@@ -96,6 +127,38 @@ function buildReminderMessage(pkg: ReturnType<typeof buildDailyPackage>): string
   lines.push("", `Toplam ${total} kelime — bugün tekrar ederek unutmayı engelleyebilirsin.`);
 
   return lines.join("\n");
+}
+
+function buildEmail(pkg: ReturnType<typeof buildDailyPackage>) {
+  const { overdue, weak, due, fresh, total } = summarize(pkg);
+  const lines = ["Tekrar zamanın geldi.", "", "Hadi güçlenelim.", ""];
+  if (overdue > 0) lines.push(`${overdue} kelime gecikmiş.`);
+  if (weak > 0) lines.push(`${weak} kelime hâlâ zayıf.`);
+  if (due > 0) lines.push(`${due} kelimenin tekrar vakti bugün.`);
+  if (fresh > 0) lines.push(`${fresh} yeni kelime seni bekliyor.`);
+  lines.push("", `Bugünkü paket: ${total} kelime.`, "", "https://quizanki.vercel.app");
+  return { subject: "Tekrar zamanın geldi. Hadi güçlenelim.", text: lines.join("\n") };
+}
+
+async function sendEmail(params: { apiKey: string; from: string; to: string; subject: string; text: string }) {
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${params.apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: params.from,
+      to: [params.to],
+      subject: params.subject,
+      text: params.text,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`E-posta hata: ${response.status} - ${errorText}`);
+  }
 }
 
 async function sendWhatsAppMessage(params: {

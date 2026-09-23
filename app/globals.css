@@ -87,3 +87,20 @@ button:not(:disabled),
     transition-duration: 0.01ms !important;
   }
 }
+
+@keyframes tile-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  30% {
+    transform: translateX(-5px) rotate(-0.4deg);
+  }
+  70% {
+    transform: translateX(5px) rotate(0.4deg);
+  }
+}
+
+.tile-shake {
+  animation: tile-shake 0.42s ease;
+}

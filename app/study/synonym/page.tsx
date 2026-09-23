@@ -204,8 +204,8 @@ export default function SynonymMatchPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 px-6 py-12">
-      <div className="max-w-3xl mx-auto space-y-8">
+    <main className="min-h-screen px-4 py-10 sm:px-6">
+      <div className="mx-auto max-w-3xl space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">🔁 Eş Anlamlı</h1>
           <Link href="/study" className="text-sm text-indigo-600 hover:underline">
@@ -218,13 +218,13 @@ export default function SynonymMatchPage() {
         </p>
 
         {phase === "empty" && (
-          <div className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-12 text-center space-y-3">
-            <p className="text-4xl">🔁</p>
-            <p className="text-lg font-semibold text-slate-800 dark:text-slate-100">Eş anlamlı grup yok.</p>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">
+          <div className="rounded-[28px] border border-[#e4d3b4] bg-[#fffaf2] p-12 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <p className="font-display text-5xl text-[#0f6b5c]">=</p>
+            <p className="mt-3 text-lg font-semibold text-slate-800 dark:text-slate-100">Eş anlamlı grup yok.</p>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
               En az iki kelimesi olan bir grup gerekir. Kelimeler sayfasından gruplayabilirsin.
             </p>
-            <Link href="/words" className="inline-block text-sm text-indigo-600 hover:underline">
+            <Link href="/words" className="mt-4 inline-block text-sm text-indigo-600 hover:underline">
               Kelimelere git
             </Link>
           </div>
@@ -232,82 +232,107 @@ export default function SynonymMatchPage() {
 
         {(phase === "running" || phase === "finished") && (
           <>
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">
-                ⏱️ {formatDuration(phase === "finished" ? finalDuration : elapsedMs)}
-              </span>
-              <span className="text-slate-400 dark:text-slate-500">
-                {matchedGroups.size} / {pairCount} eşleşti · {mistakes} hata
-              </span>
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <p className="font-mono text-3xl font-semibold text-slate-900 dark:text-slate-50">
+                  {formatDuration(phase === "finished" ? finalDuration : elapsedMs)}
+                </p>
+                <p className="text-xs text-slate-400">
+                  {matchedGroups.size} / {pairCount} eşleşti · {mistakes} hata
+                </p>
+              </div>
+              <div className="flex gap-1.5">
+                {Array.from({ length: pairCount }).map((_, index) => (
+                  <span
+                    key={index}
+                    className={`h-2.5 w-6 rounded-full ${
+                      index < matchedGroups.size ? "bg-[#0f6b5c]" : "bg-[#e7dcc8] dark:bg-slate-700"
+                    }`}
+                  />
+                ))}
+              </div>
             </div>
 
             {lastPair && phase === "running" && (
-              <p className="text-center text-sm text-indigo-700 dark:text-indigo-300">{lastPair}</p>
+              <p className="rounded-full border border-[#d7c4a3] bg-[#fffaf2] px-4 py-2 text-center font-display text-lg text-[#0f6b5c] dark:border-slate-700 dark:bg-slate-800">
+                {lastPair}
+              </p>
             )}
 
             {phase === "running" && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {tiles.map((tile) => {
-                  const isMatched = matchedGroups.has(tile.groupId);
-                  const isSelected = selected.some((item) => item.key === tile.key);
-                  const isWrong = wrongFlash.has(tile.key);
-                  let classes =
-                    "rounded-xl border px-3 py-4 text-center transition-all min-h-[76px] flex flex-col items-center justify-center gap-1 ";
-                  if (isMatched) {
-                    classes += "border-green-300 bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300";
-                  } else if (isWrong) {
-                    classes += "border-red-400 bg-red-50 dark:bg-red-950 text-red-600";
-                  } else if (isSelected) {
-                    classes += "border-indigo-500 bg-indigo-50 dark:bg-indigo-950 text-indigo-700";
-                  } else {
-                    classes +=
-                      "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 hover:border-indigo-300";
-                  }
+              <div className="relative overflow-hidden rounded-[28px] border border-[#e4d3b4] bg-[#f6efe2] p-3 shadow-sm dark:border-slate-700 dark:bg-[#171411] sm:p-5">
+                <div className="pointer-events-none absolute inset-y-6 left-1/2 hidden w-px -translate-x-1/2 border-l border-dashed border-[#c4a574] sm:block" />
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {tiles.map((tile) => {
+                    const isMatched = matchedGroups.has(tile.groupId);
+                    const isSelected = selected.some((item) => item.key === tile.key);
+                    const isWrong = wrongFlash.has(tile.key);
+                    let classes =
+                      "relative min-h-[92px] rounded-2xl border px-3 py-4 text-center transition-transform duration-200 flex flex-col items-center justify-center gap-1 ";
+                    if (isMatched) {
+                      classes += "border-[#b7d7c8] bg-[#eef7f2] text-[#0f6b5c] dark:bg-emerald-950/40";
+                    } else if (isWrong) {
+                      classes += "tile-shake border-red-400 bg-[#fff1ee] text-red-700";
+                    } else if (isSelected) {
+                      classes += "-translate-y-1 border-[#0f6b5c] bg-white text-[#0f6b5c] shadow-md dark:bg-slate-800";
+                    } else {
+                      classes +=
+                        "border-[#eadcc4] bg-[#fffaf2] text-slate-900 hover:-translate-y-0.5 hover:border-[#0f6b5c] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-50";
+                    }
 
-                  return (
-                    <button
-                      key={tile.key}
-                      onClick={() => handleTileClick(tile)}
-                      disabled={isMatched}
-                      className={classes}
-                    >
-                      <span className="text-sm font-semibold">{tile.word}</span>
-                      {isMatched && <span className="text-[11px] text-slate-500 dark:text-slate-400">{tile.meaning}</span>}
-                    </button>
-                  );
-                })}
+                    return (
+                      <button
+                        key={tile.key}
+                        onClick={() => handleTileClick(tile)}
+                        disabled={isMatched}
+                        className={classes}
+                      >
+                        <span className="absolute left-3 top-3 h-1.5 w-1.5 rounded-full bg-[#c4a574]" />
+                        <span className="font-display text-xl leading-tight">{tile.word}</span>
+                        {isMatched && (
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400">{tile.meaning}</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
             {phase === "finished" && (
-              <div className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-8 text-center space-y-4">
+              <div className="rounded-[28px] border border-[#e4d3b4] bg-[#fffaf2] p-6 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:p-8">
                 {isNewRecord && (
-                  <div className="inline-block bg-amber-100 dark:bg-amber-950 text-amber-700 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">
+                  <div className="mb-3 inline-block rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-700 dark:bg-amber-950">
                     🏆 Yeni Rekor!
                   </div>
                 )}
-                <p className="text-4xl">🎉</p>
-                <p className="text-lg font-semibold text-slate-800 dark:text-slate-100">Tamamlandı!</p>
-                <p className="text-5xl font-mono font-extrabold text-indigo-600">{formatDuration(finalDuration)}</p>
-                <p className="text-sm text-slate-400 dark:text-slate-500">{mistakes} hata ile bitirdin</p>
+                <p className="font-display text-4xl text-slate-900 dark:text-slate-50">Tamamlandı!</p>
+                <p className="mt-2 font-mono text-5xl font-extrabold text-[#0f6b5c]">{formatDuration(finalDuration)}</p>
+                <p className="mt-2 text-sm text-slate-400 dark:text-slate-500">{mistakes} hata ile bitirdin</p>
                 {personalBestMs !== null && !isNewRecord && (
                   <p className="text-sm text-slate-400 dark:text-slate-500">
                     Kişisel rekorun: {formatDuration(personalBestMs)}
                   </p>
                 )}
-                <ul className="text-left space-y-2">
+                <ul className="mt-6 space-y-2 text-left">
                   {tiles
                     .filter((tile) => tile.key.startsWith("a-"))
                     .map((left) => {
                       const right = tiles.find((tile) => tile.groupId === left.groupId && tile.key !== left.key);
                       if (!right) return null;
                       return (
-                        <li key={left.groupId} className="rounded-xl bg-slate-50 dark:bg-slate-900 px-4 py-3 text-sm">
-                          <span className="font-semibold text-slate-800 dark:text-slate-100">{left.word}</span>
-                          <span className="text-slate-400"> = </span>
-                          <span className="font-semibold text-slate-800 dark:text-slate-100">{right.word}</span>
-                          <span className="block text-xs text-slate-500 mt-1">
-                            {left.meaning} · {right.meaning}
+                        <li
+                          key={left.groupId}
+                          className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-2xl bg-white px-4 py-3 dark:bg-slate-900"
+                        >
+                          <span>
+                            <span className="block font-display text-lg text-slate-900 dark:text-slate-50">{left.word}</span>
+                            <span className="text-xs text-slate-500">{left.meaning}</span>
+                          </span>
+                          <span className="font-display text-2xl text-[#0f6b5c]">=</span>
+                          <span className="text-right">
+                            <span className="block font-display text-lg text-slate-900 dark:text-slate-50">{right.word}</span>
+                            <span className="text-xs text-slate-500">{right.meaning}</span>
                           </span>
                         </li>
                       );
@@ -315,7 +340,7 @@ export default function SynonymMatchPage() {
                 </ul>
                 <button
                   onClick={() => setupRound(poolRef.current)}
-                  className="rounded-xl bg-indigo-600 text-white font-medium px-6 py-3 hover:bg-indigo-700 transition-colors"
+                  className="mt-6 rounded-full bg-[#0f6b5c] px-6 py-3 font-medium text-white hover:bg-[#0d564b]"
                 >
                   Yeniden Başla
                 </button>
