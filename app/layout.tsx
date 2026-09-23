@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/lib/ThemeProvider";
 import FloatingControls from "@/components/FloatingControls";
 import VisitBeacon from "@/components/VisitBeacon";
+import BottomNav from "@/components/BottomNav";
 
 const sans = Manrope({
   subsets: ["latin", "latin-ext"],
@@ -49,6 +50,7 @@ export default function RootLayout({
           <VisitBeacon />
           <FloatingControls />
           {children}
+          <BottomNav />
         </ThemeProvider>
       </body>
     </html>
