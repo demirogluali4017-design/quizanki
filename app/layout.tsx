@@ -3,6 +3,7 @@ import { Fraunces, Manrope } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/ThemeProvider";
 import FloatingControls from "@/components/FloatingControls";
+import VisitBeacon from "@/components/VisitBeacon";
 
 const sans = Manrope({
   subsets: ["latin", "latin-ext"],
@@ -45,6 +46,7 @@ export default function RootLayout({
       </head>
       <body className={`${sans.className} text-slate-900 antialiased dark:text-slate-50`}>
         <ThemeProvider>
+          <VisitBeacon />
           <FloatingControls />
           {children}
         </ThemeProvider>

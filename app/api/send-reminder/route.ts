@@ -7,13 +7,10 @@ export const runtime = "nodejs";
 export const maxDuration = 30;
 
 /**
- * Bu endpoint Vercel Cron tarafından her gün belirli bir saatte tetiklenir
- * (bkz. vercel.json). Günlük çalışma paketini hesaplar, paket boşsa mesaj
- * ATMAZ (kullanıcıyı gereksiz spam'lemez), doluysa Twilio üzerinden
- * WhatsApp mesajı gönderir.
- *
- * Güvenlik: Bu route herkese açık bir URL'dir. CRON_SECRET ile korunur —
- * sadece doğru secret'ı bilen istekler (Vercel Cron dahil) tetikleyebilir.
+ * Vercel Cron, Türkiye saatiyle iki kez çağırır (vercel.json, UTC):
+ * öğlen 12:00 ve akşam 16:00.
+ * Öğlen e-postası her gün gider. Akşam e-postası yalnızca o gün siteye
+ * hiç girilmemişse gider. WhatsApp yalnızca öğlen, paket doluysa gider.
  */
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -51,8 +48,20 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const slot = request.nextUrl.searchParams.get("when") === "evening" ? "evening" : "noon";
+
   try {
     const supabaseAdmin = createServiceRoleClient();
+
+    if (slot === "evening") {
+      if (!emailReady) {
+        return NextResponse.json({ sent: false, reason: "Akşam hatırlatması yalnızca e-posta ile gider." });
+      }
+      if (await visitedToday(supabaseAdmin)) {
+        return NextResponse.json({ sent: false, reason: "Bugün giriş yapılmış." });
+      }
+    }
+
     const { data, error } = await supabaseAdmin.from("flashcards").select("*");
 
     if (error || !data) {
@@ -64,21 +73,15 @@ export async function GET(request: NextRequest) {
 
     const cards = data as Flashcard[];
     const pkg = buildDailyPackage(cards);
+    const email = buildEmail(pkg, slot);
 
-    if (pkg.totalCount === 0) {
-      return NextResponse.json({ sent: false, reason: "Bugün için paket boş." });
-    }
-
-    const message = buildReminderMessage(pkg);
-    const email = buildEmail(pkg);
-
-    if (whatsappReady) {
+    if (slot === "noon" && whatsappReady && pkg.totalCount > 0) {
       await sendWhatsAppMessage({
         accountSid: accountSid as string,
         authToken: authToken as string,
         fromNumber: fromNumber as string,
         toNumber: toNumber as string,
-        message,
+        message: buildReminderMessage(pkg),
       });
     }
 
@@ -93,8 +96,9 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      sent: true,
-      whatsapp: whatsappReady,
+      sent: emailReady || (slot === "noon" && whatsappReady && pkg.totalCount > 0),
+      slot,
+      whatsapp: slot === "noon" && whatsappReady && pkg.totalCount > 0,
       email: emailReady,
       package: summarize(pkg),
     });
@@ -129,15 +133,131 @@ function buildReminderMessage(pkg: ReturnType<typeof buildDailyPackage>): string
   return lines.join("\n");
 }
 
-function buildEmail(pkg: ReturnType<typeof buildDailyPackage>) {
+function istanbulDate(date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(date);
+}
+
+function istanbulDayStart(date = new Date()): Date {
+  return new Date(`${istanbulDate(date)}T00:00:00+03:00`);
+}
+
+function dayIndex(date = new Date()): number {
+  const start = Date.UTC(2026, 0, 1);
+  return Math.floor((date.getTime() - start) / 86400000);
+}
+
+async function visitedToday(supabase: ReturnType<typeof createServiceRoleClient>): Promise<boolean> {
+  const start = istanbulDayStart();
+
+  const seen = await supabase.from("app_settings").select("last_seen_at").eq("id", 1).maybeSingle();
+  const lastSeen = (seen.data as { last_seen_at?: string | null } | null)?.last_seen_at;
+  if (!seen.error && lastSeen && new Date(lastSeen) >= start) return true;
+
+  const activity = await supabase
+    .from("daily_activity")
+    .select("reviews_done, new_words_done")
+    .eq("activity_date", istanbulDate())
+    .maybeSingle();
+  if (
+    activity.data &&
+    ((activity.data.reviews_done ?? 0) > 0 || (activity.data.new_words_done ?? 0) > 0)
+  ) {
+    return true;
+  }
+
+  const reviewed = await supabase
+    .from("flashcards")
+    .select("id")
+    .gte("last_reviewed_at", start.toISOString())
+    .limit(1);
+  if (reviewed.data && reviewed.data.length > 0) return true;
+
+  const ownerRow = await supabase.from("app_owner").select("email").eq("id", 1).maybeSingle();
+  const email = (ownerRow.data?.email || process.env.REMINDER_EMAIL_TO || "").toLowerCase();
+  if (!email) return false;
+  const listed = await supabase.auth.admin.listUsers({ page: 1, perPage: 200 });
+  const user = listed.data?.users?.find((item) => item.email?.toLowerCase() === email);
+  return Boolean(user?.last_sign_in_at && new Date(user.last_sign_in_at) >= start);
+}
+
+const NOON_LETTERS = [
+  {
+    subject: "Azim, bugün de masada",
+    lead: "Azim bir günde tükenmez. Kararlılık, dün oturduğun yere bugün de oturmaktır. İstikrar ise bunu kimse alkışlamazken sürdürmektir.",
+  },
+  {
+    subject: "Küçük tur, büyük istikrar",
+    lead: "Büyük sıçrama beklemene gerek yok. İstikrar, her öğlen aynı kapıdan içeri girmektir. Azmin sesi gürültülü değildir; sadece vazgeçmez.",
+  },
+  {
+    subject: "Kararlılık bir duygu değil",
+    lead: "Kararlılık, canın istemese de başladığın işe dönmektir. Azim o dönüşü taşır. İstikrar, bu dönüşü yarına da bırakır.",
+  },
+  {
+    subject: "Bugünün payı sende",
+    lead: "Kelime bir günde yerleşmez. Azim onu tekrar tekrar çağırır. Kararlılık bahane üretmez. İstikrar, takvimi yırtmadan ilerler.",
+  },
+  {
+    subject: "Hadi, bir tur daha",
+    lead: "Güçlenmek bağırarak olmaz. Azimle açarsın, kararlılıkla bitirirsin, istikrarla yarın yine buradasındır.",
+  },
+  {
+    subject: "Öğrenmek bir yürüyüş",
+    lead: "Hızlı olan değil, yürüyüşü bırakmayan ilerler. Azim adımı atar. Kararlılık yönü şaşırmaz. İstikrar yolu uzatır.",
+  },
+  {
+    subject: "Bugün de sözünde kal",
+    lead: "Kendine verdiğin söz, başkasına verilenden daha sessizdir. Azim onu hatırlar. Kararlılık onu tutar. İstikrar onu alışkanlık yapar.",
+  },
+  {
+    subject: "Masan hazır",
+    lead: "Dağınık bir günün ortasında bile kısa bir tur yeter. Azim bahaneyi ezer. Kararlılık süreyi ayırır. İstikrar bunu sıradanlaştırır.",
+  },
+];
+
+const EVENING_LETTERS = [
+  {
+    subject: "Gün bitmeden bir tur",
+    lead: "Öğlen haber vermiştim. Henüz içeri girmedin. Kararlılık, kaçan saati akşama bırakıp yine de gelmektir.",
+  },
+  {
+    subject: "İstikrar bu akşam da duruyor",
+    lead: "Bugün kapıyı açmadın. Azim kırılmaz; ertelenir, sonra geri çağrılır. İstikrar, boş geçen günü boş bırakmamaktır.",
+  },
+  {
+    subject: "On dakika, sözünü tutar",
+    lead: "Akşam yorgunluğu bahanedir. Kararlılık kısa bir turla da ayakta kalır. Azim, bitmemiş günü kapatmadan önce bir adım daha ister.",
+  },
+  {
+    subject: "Bugün henüz sen yoksun",
+    lead: "Giriş yok, tekrar yok. İstikrar tam da böyle günlerde belli olur. Azim sesini yükseltmez. Sadece beklemeyi bırakmanı ister.",
+  },
+  {
+    subject: "Kararlılık geç kalmayı affeder",
+    lead: "Öğlen kaçtıysa akşam hâlâ senindir. Azim saat tutmaz, dönüşü tutar. İstikrar, günü sıfır yazmadan kapatır.",
+  },
+  {
+    subject: "Hadi, günü boş geçirme",
+    lead: "Bir gün atlamak zinciri inceltir. Kararlılık o inceliği görür ve döner. Azimle aç, istikrarla kapat.",
+  },
+];
+
+function buildEmail(pkg: ReturnType<typeof buildDailyPackage>, slot: "noon" | "evening") {
   const { overdue, weak, due, fresh, total } = summarize(pkg);
-  const lines = ["Tekrar zamanın geldi.", "", "Hadi güçlenelim.", ""];
-  if (overdue > 0) lines.push(`${overdue} kelime gecikmiş.`);
-  if (weak > 0) lines.push(`${weak} kelime hâlâ zayıf.`);
-  if (due > 0) lines.push(`${due} kelimenin tekrar vakti bugün.`);
-  if (fresh > 0) lines.push(`${fresh} yeni kelime seni bekliyor.`);
-  lines.push("", `Bugünkü paket: ${total} kelime.`, "", "https://quizanki.vercel.app");
-  return { subject: "Tekrar zamanın geldi. Hadi güçlenelim.", text: lines.join("\n") };
+  const letters = slot === "evening" ? EVENING_LETTERS : NOON_LETTERS;
+  const letter = letters[Math.abs(dayIndex()) % letters.length];
+  const lines = [letter.lead, ""];
+  if (total > 0) {
+    lines.push(`Bugünkü paket ${total} kelime.`);
+    if (overdue > 0) lines.push(`${overdue} tanesi gecikmiş. Onlar azmini ölçer.`);
+    if (weak > 0) lines.push(`${weak} tanesi hâlâ zayıf. Kararlılık onları bırakmaz.`);
+    if (due > 0) lines.push(`${due} tanesinin vakti bugün.`);
+    if (fresh > 0) lines.push(`${fresh} yeni kelime, istikrarın yeni halkası.`);
+  } else {
+    lines.push("Bugün zorunlu paket boş. Yine de kısa bir tur, istikrarı canlı tutar.");
+  }
+  lines.push("", "Hadi güçlenelim.", "https://quizanki.vercel.app");
+  return { subject: letter.subject, text: lines.join("\n") };
 }
 
 async function sendEmail(params: { apiKey: string; from: string; to: string; subject: string; text: string }) {
