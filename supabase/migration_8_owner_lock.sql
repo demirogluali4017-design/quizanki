@@ -1,8 +1,6 @@
--- ============================================
 -- Migration 8: Sadece sahip erişsin
--- Supabase Dashboard > SQL Editor'de BİR KEZ çalıştırın.
--- Aşağıdaki e-posta, giriş yapacağın hesapla aynı olmalı.
--- ============================================
+-- Supabase SQL Editor'de bir kez çalıştırın.
+-- E-posta, giriş hesabıyla aynı olmalı.
 
 create table if not exists public.app_owner (
   id integer primary key default 1,
@@ -28,86 +26,43 @@ as $$
     from public.app_owner
     where id = 1
       and lower(email) = lower(coalesce(auth.jwt() ->> 'email', ''))
-  );
+  )
 $$;
 
 revoke all on function public.is_owner() from public;
 revoke all on function public.is_owner() from anon;
 grant execute on function public.is_owner() to authenticated;
 
--- Eski herkese açık politikalar
 drop policy if exists "Herkes okuyabilir" on public.flashcards;
 drop policy if exists "Herkes güncelleyebilir" on public.flashcards;
 drop policy if exists "Herkes silebilir" on public.flashcards;
 drop policy if exists "Herkes ekleyebilir" on public.flashcards;
+drop policy if exists "Sahip erişebilir" on public.flashcards;
+create policy "Sahip erişebilir" on public.flashcards for all to authenticated using (public.is_owner()) with check (public.is_owner());
 
 drop policy if exists "Herkes okuyabilir (daily_activity)" on public.daily_activity;
 drop policy if exists "Herkes ekleyebilir (daily_activity)" on public.daily_activity;
 drop policy if exists "Herkes güncelleyebilir (daily_activity)" on public.daily_activity;
+drop policy if exists "Sahip erişebilir" on public.daily_activity;
+create policy "Sahip erişebilir" on public.daily_activity for all to authenticated using (public.is_owner()) with check (public.is_owner());
 
 drop policy if exists "Herkes okuyabilir (app_settings)" on public.app_settings;
 drop policy if exists "Herkes güncelleyebilir (app_settings)" on public.app_settings;
+drop policy if exists "Sahip erişebilir" on public.app_settings;
+create policy "Sahip erişebilir" on public.app_settings for all to authenticated using (public.is_owner()) with check (public.is_owner());
 
 drop policy if exists "Herkes okuyabilir (word_groups)" on public.word_groups;
 drop policy if exists "Herkes ekleyebilir (word_groups)" on public.word_groups;
 drop policy if exists "Herkes silebilir (word_groups)" on public.word_groups;
+drop policy if exists "Sahip erişebilir" on public.word_groups;
+create policy "Sahip erişebilir" on public.word_groups for all to authenticated using (public.is_owner()) with check (public.is_owner());
 
-do $$
-begin
-  if to_regclass('public.test_results') is not null then
-    execute 'drop policy if exists "Herkes okuyabilir (test_results)" on public.test_results';
-    execute 'drop policy if exists "Herkes ekleyebilir (test_results)" on public.test_results';
-    execute 'drop policy if exists "Sahip erişebilir" on public.test_results';
-    execute $p$
-      create policy "Sahip erişebilir"
-        on public.test_results
-        for all
-        to authenticated
-        using (public.is_owner())
-        with check (public.is_owner())
-    $p$;
-  end if;
+drop policy if exists "Herkes okuyabilir (test_results)" on public.test_results;
+drop policy if exists "Herkes ekleyebilir (test_results)" on public.test_results;
+drop policy if exists "Sahip erişebilir" on public.test_results;
+create policy "Sahip erişebilir" on public.test_results for all to authenticated using (public.is_owner()) with check (public.is_owner());
 
-  if to_regclass('public.match_results') is not null then
-    execute 'drop policy if exists "Herkes okuyabilir (match_results)" on public.match_results';
-    execute 'drop policy if exists "Herkes ekleyebilir (match_results)" on public.match_results';
-    execute 'drop policy if exists "Sahip erişebilir" on public.match_results';
-    execute $p$
-      create policy "Sahip erişebilir"
-        on public.match_results
-        for all
-        to authenticated
-        using (public.is_owner())
-        with check (public.is_owner())
-    $p$;
-  end if;
-end $$;
-
-create policy "Sahip erişebilir"
-  on public.flashcards
-  for all
-  to authenticated
-  using (public.is_owner())
-  with check (public.is_owner());
-
-create policy "Sahip erişebilir"
-  on public.daily_activity
-  for all
-  to authenticated
-  using (public.is_owner())
-  with check (public.is_owner());
-
-create policy "Sahip erişebilir"
-  on public.app_settings
-  for all
-  to authenticated
-  using (public.is_owner())
-  with check (public.is_owner());
-
-create policy "Sahip erişebilir"
-  on public.word_groups
-  for all
-  to authenticated
-  using (public.is_owner())
-  with check (public.is_owner());
-
+drop policy if exists "Herkes okuyabilir (match_results)" on public.match_results;
+drop policy if exists "Herkes ekleyebilir (match_results)" on public.match_results;
+drop policy if exists "Sahip erişebilir" on public.match_results;
+create policy "Sahip erişebilir" on public.match_results for all to authenticated using (public.is_owner()) with check (public.is_owner());
