@@ -5,6 +5,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/lib/ThemeProvider";
 import { getTTSSettings, setTTSSettings } from "@/components/SpeakButton";
+import { Flashcard, WordGroup } from "@/types";
 
 export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
@@ -16,6 +17,8 @@ export default function SettingsPage() {
   const [dailyReviewGoal, setDailyReviewGoal] = useState(30);
   const [goalsLoaded, setGoalsLoaded] = useState(false);
   const [savingGoals, setSavingGoals] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportNote, setExportNote] = useState<string | null>(null);
 
   useEffect(() => {
     const s = getTTSSettings();
@@ -37,6 +40,49 @@ export default function SettingsPage() {
     }
     loadGoals();
   }, []);
+
+  async function downloadBackup() {
+    setExporting(true);
+    setExportNote(null);
+    try {
+      const PAGE = 1000;
+      const flashcards: Flashcard[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("flashcards")
+          .select("*")
+          .order("created_at", { ascending: true })
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const rows = (data ?? []) as Flashcard[];
+        flashcards.push(...rows);
+        if (rows.length < PAGE) break;
+        from += PAGE;
+      }
+
+      const { data: groups, error: groupError } = await supabase.from("word_groups").select("*");
+      if (groupError) throw groupError;
+
+      const payload = {
+        exported_at: new Date().toISOString(),
+        flashcards,
+        word_groups: (groups ?? []) as WordGroup[],
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `quizanki-yedek-${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setExportNote(`${flashcards.length} kelime indirildi.`);
+    } catch {
+      setExportNote("Yedek alınamadı.");
+    } finally {
+      setExporting(false);
+    }
+  }
 
   async function saveGoals() {
     setSavingGoals(true);
@@ -80,6 +126,21 @@ export default function SettingsPage() {
             ← Ana sayfaya dön
           </Link>
         </div>
+
+        <section className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-6 space-y-4">
+          <h2 className="font-semibold text-slate-800 dark:text-slate-100">Yedek</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Kelimeler, anlamlar, tekrarlar ve gruplar JSON dosyasına iner.
+          </p>
+          <button
+            onClick={downloadBackup}
+            disabled={exporting}
+            className="w-full rounded-lg bg-indigo-600 text-white font-medium py-2.5 hover:bg-indigo-700 transition-colors text-sm disabled:opacity-60"
+          >
+            {exporting ? "Hazırlanıyor..." : "Yedek indir"}
+          </button>
+          {exportNote && <p className="text-xs text-slate-400 dark:text-slate-500">{exportNote}</p>}
+        </section>
 
         {/* Görünüm */}
         <section className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-6 space-y-4">

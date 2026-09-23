@@ -5,7 +5,7 @@ import Link from "next/link";
 import MultiFileUploadZone from "@/components/MultiFileUploadZone";
 import OcrWordPicker from "@/components/OcrWordPicker";
 import { compressImages } from "@/lib/imageCompression";
-import { recognizeImage } from "@/lib/ocr";
+import { recognizeImages } from "@/lib/ocr";
 import { Flashcard } from "@/types";
 
 type ProcessState = "idle" | "processing" | "success" | "error";
@@ -71,7 +71,14 @@ function PhotoUploadPanel() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [savedWords, setSavedWords] = useState<Flashcard[]>([]);
   const [ocrPages, setOcrPages] = useState<
-    { url: string; label: string; tokens: Awaited<ReturnType<typeof recognizeImage>>["tokens"]; width: number; height: number }[] | null
+    {
+      url: string;
+      label: string;
+      tokens: Awaited<ReturnType<typeof recognizeImages>>[number]["tokens"];
+      pairs: Awaited<ReturnType<typeof recognizeImages>>[number]["pairs"];
+      width: number;
+      height: number;
+    }[] | null
   >(null);
   const [ocrProgress, setOcrProgress] = useState<string | null>(null);
   const [ocrError, setOcrError] = useState<string | null>(null);
@@ -90,24 +97,21 @@ function PhotoUploadPanel() {
     try {
       setOcrProgress("Fotoğraflar hazırlanıyor…");
       const compressed = await compressImages(selectedFiles);
-      const pages = [];
-      for (let index = 0; index < compressed.length; index += 1) {
-        const file = compressed[index];
-        setOcrProgress(`Sayfa ${index + 1}/${compressed.length} okunuyor…`);
-        const result = await recognizeImage(file, index, (progress) => {
-          setOcrProgress(
-            `Sayfa ${index + 1}/${compressed.length} okunuyor… %${Math.round(progress * 100)}`
-          );
-        });
-        pages.push({
-          url: URL.createObjectURL(file),
+      const recognized = await recognizeImages(compressed, (index, progress) => {
+        setOcrProgress(
+          `Sayfa ${index + 1}/${compressed.length} okunuyor… %${Math.round(progress * 100)}`
+        );
+      });
+      setOcrPages(
+        recognized.map((result, index) => ({
+          url: URL.createObjectURL(compressed[index]),
           label: `Sayfa ${index + 1}`,
           tokens: result.tokens,
+          pairs: result.pairs,
           width: result.width,
           height: result.height,
-        });
-      }
-      setOcrPages(pages);
+        }))
+      );
       setOcrProgress(null);
     } catch (err) {
       setOcrProgress(null);
@@ -135,7 +139,19 @@ function PhotoUploadPanel() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Bilinmeyen bir hata oluştu.");
+        const message = String(data.error || "");
+        const busy =
+          res.status === 503 ||
+          res.status === 429 ||
+          data.retryable === true ||
+          /yoğun|kullanılamıyor|unavailable/i.test(message);
+        if (busy) {
+          setState("idle");
+          setErrorMessage(message || "Gemini şu anda yoğun.");
+          await handleOcr();
+          return;
+        }
+        throw new Error(message || "Bilinmeyen bir hata oluştu.");
       }
 
       setSavedWords(data.words ?? []);
@@ -162,41 +178,41 @@ function PhotoUploadPanel() {
           setSavedWords([]);
           clearOcr();
         }}
-        disabled={state === "processing"}
+        disabled={state === "processing" || Boolean(ocrProgress)}
       />
 
       {selectedFiles.length > 0 && state !== "success" && !ocrPages && (
         <div className="space-y-2">
           <button
-            onClick={handleOcr}
-            disabled={state === "processing" || Boolean(ocrProgress)}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {ocrProgress ? (
-              <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                {ocrProgress}
-              </>
-            ) : (
-              "OCR ile kelime seç"
-            )}
-          </button>
-          <button
             onClick={handleProcess}
             disabled={state === "processing" || Boolean(ocrProgress)}
-            className="w-full rounded-xl border border-slate-300 bg-white py-3 font-medium text-slate-700 transition-colors hover:border-indigo-400 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+            className="w-full rounded-xl bg-indigo-600 py-3 font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {state === "processing" ? (
               <span className="flex items-center justify-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-300 border-t-indigo-700" />
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
                 Gemini {selectedFiles.length} sayfayı analiz ediyor...
               </span>
             ) : (
               `${selectedFiles.length} Sayfayı İşle ve Kelimeleri Çıkar`
             )}
           </button>
+          <button
+            onClick={handleOcr}
+            disabled={state === "processing" || Boolean(ocrProgress)}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white py-3 font-medium text-slate-700 transition-colors hover:border-indigo-400 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+          >
+            {ocrProgress ? (
+              <>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-300 border-t-indigo-700" />
+                {ocrProgress}
+              </>
+            ) : (
+              "OCR ile kelime seç"
+            )}
+          </button>
           <p className="text-xs text-slate-400">
-            OCR Gemini kullanmaz. Kelimeye, sonra anlama dokunup seçtiklerini eklersin.
+            Önce Gemini dener. Yoğunsa kelimeleri buradan seçersin.
           </p>
         </div>
       )}

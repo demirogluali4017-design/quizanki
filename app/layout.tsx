@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { Fraunces, Source_Sans_3 } from "next/font/google";
+import { Fraunces, Manrope } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/ThemeProvider";
 import FloatingControls from "@/components/FloatingControls";
 
-const sans = Source_Sans_3({
+const sans = Manrope({
   subsets: ["latin", "latin-ext"],
   variable: "--font-sans",
   display: "swap",
@@ -43,7 +43,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className={`${sans.className} bg-slate-50 dark:bg-slate-950 transition-colors`}>
+      <body className={`${sans.className} text-slate-900 antialiased dark:text-slate-50`}>
         <ThemeProvider>
           <FloatingControls />
           {children}
