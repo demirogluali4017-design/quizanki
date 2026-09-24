@@ -87,7 +87,7 @@ async function callGemini(prompt: string, apiKeys: string[]): Promise<GeminiDeci
     const ai = new GoogleGenAI({ apiKey: apiKeys[keyIndex] });
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
+        model: "gemini-3.5-flash-lite",
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         config: { responseMimeType: "application/json", temperature: 0.1 },
       });
