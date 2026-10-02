@@ -30,14 +30,16 @@ Yanıtı sadece JSON array olarak döndür.
 [{"word": "", "preposition": "", "meaning": "", "example_sentence": ""}]`;
 const PRESS_PROMPT = `Bu görsel bir Fransızca gazete veya dergi sayfasıdır. Okuyucu bilmediği kelimeleri SARI fosforlu kalemle boyamıştır.
 
-SADECE sarı boyalı sözcük veya tamlamaları çıkar. Boyanmamış kelimeleri, kişi adlarını, manşetteki boyasız kısmı, fotoğraf altını ve sayfa numarasını kart yapma. Bir tamlamada yalnızca bir kelime sarıysa sadece o kelimeyi al; bütün sarıysa tamlamayı bölme ("mi-mandat", "désastre électoral").
+ÖNCE sayfanın tamamını soldan sağa, yukarıdan aşağıya tara. Manşet, spot, sütunlar, kenar kutusu ve fotoğraf altı dahil her sarı izi bul. Sarıyı kaçırmak yasaktır. Soluk, kısa veya kelimenin yalnızca bir hecesini kaplayan sarıyı da say. Emin değilsen kelimeyi DAHİL ET, dışarıda bırakma.
+
+SADECE sarı boyalı sözcük veya tamlamaları çıkar. Boyanmamış kelimeleri kart yapma. Bir tamlamada yalnızca bir kelime sarıysa sadece o kelimeyi al; sarı bütün tamlamadaysa bölme ("mi-mandat", "désastre électoral"). Sarı kelime satır sonunda bölünmüşse birleştir.
 
 Kurallar:
 1. "word": fiilse mastar yaz ("déchire" gördüysen "déchirer"). İsimse cinsiyeti gösteren tanımlığı ekle: "la contestation", "la crue", "le déploiement", "l'emprise". Sayfada un(e) veya (e) yazıyorsa onu da bırak.
 2. "preposition": fiil bu cümlede bir edatla kullanılıyorsa kalıbı yaz ("se déployer", "s'emparer de"). Edat yoksa "".
 3. "meaning": SADECE kısa Türkçe anlam. Bu cümledeki anlamı yaz, sözlükteki alakasız ikinci anlamı yazma. Fransızca tanım ekleme.
 4. "example_sentence": o sarı kelimenin geçtiği gazetedeki Fransızca cümleyi aynen kullan. Yeni cümle uydurma, Türkçe yazma, cümleyi kısaltırken kelimeyi düşürme.
-5. Aynı sözcüğü bir kez yaz.
+5. Aynı sözcüğü bir kez yaz. Bitirmeden önce sarıları tekrar say ve listede eksik kalmadığından emin ol.
 Yanıtı sadece JSON array olarak döndür.
 [{"word": "", "preposition": "", "meaning": "", "example_sentence": ""}]`;
 function extractJsonArray(rawText: string): ExtractedWord[] {
