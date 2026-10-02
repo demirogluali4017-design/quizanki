@@ -16,15 +16,15 @@ Yanıtı sadece ve strictly JSON array formatında döndür, başka hiçbir aç�
 Format:
 [{"word": "", "preposition": "", "meaning": "", "example_sentence": ""}]`;
 
-const TEXTBOOK_PROMPT = `Bu görsel bir Fransızca kelime kitabı sayfasıdır. Kelimeler tablo halinde değil, cümlelerin içinde koyu (bold) yazılır. Parantez veya "=" işareti Fransızca açıklama verir. Örnek: "vestiges (des restes)", "l'aristocratie = des aristocrates = des nobles".
+const TEXTBOOK_PROMPT = `Bu görsel bir Fransızca kelime kitabı sayfasıdır. Öğretilen kelimeler cümlenin içinde KALIN (bold) yazılır. Parantez veya "=" yanındaki ifade açıklamadır, ayrı kart değildir.
 
-SADECE koyu yazılmış öğretilen sözcük ve kalıpları çıkar. Normal puntoyla yazılmış kelimeleri, kişi adlarını (Émile, Ève, Jacques, Louis XIV gibi), sayfa numarasını, bölüm başlığını ve "Remarque" kelimesini kart yapma. Remarque cümlesi bir sözcüğün anlamını netleştiriyorsa yalnızca o sözcüğün anlamında kullan.
+SADECE kalın yazılmış sözcük veya tamlamaları çıkar. Normal yazılmış kelimeleri, kişi adlarını, sayfa numarasını, bölüm başlığını ve "Remarque" kelimesini kart yapma. Bir tamlamada yalnızca bir kelime kalınsa sadece o kelimeyi al; bütün kalınsa tamlamayı bölme ("Moyen Âge", "Révolution française").
 
 Kurallar:
-1. "word": sözlük maddesi. Fiilse mastar yaz. İsim ve isim tamlamasında cinsiyeti gösteren tanımlığı KORU: "la crue", "le roi", "la reine", "l'histoire", "les vestiges". Tanımlık sayfada yazmıyorsa sözlükteki doğru tanımlığı sen ekle. Birden fazla kelimelik kalıbı bölme: "le Moyen Âge", "la Révolution française", "le siècle des Lumières". Sayfada eril/dişil ek parantezle yazılmışsa onu da bırak: "un(e) historien(ne)". İki biçim ayrı yazılmışsa ikisini de yaz: "le roi / la reine". Sayfada ek yoksa dişil biçim uydurma; tanımlık yeter.
-2. "preposition": fiil sayfada bir edatla geçiyorsa kalıbı yaz ("dater de", "remonter à", "s'occuper de", "faire partie de"). Edat yoksa "".
-3. "meaning": önce kısa ve doğru Türkçe anlam. Sayfada parantez veya "=" ile Fransızca açıklama varsa onu AYNEN ekle. Yoksa Larousse tarzı, tek satırlık Fransızca tanım yaz. İkisini " · " ile ayır. Örnek: "kalıntılar · des restes".
-4. "example_sentence": o kelimenin geçtiği sayfadaki Fransızca cümleyi kullan. Cümleyi uzatma, yeni cümle uydurma, Türkçe yazma. Sayfada cümle yoksa kısa bir Fransızca örnek üret.
+1. "word": fiilse mastar yaz. İsimse cinsiyeti gösteren tanımlığı ekle: "la crue", "le roi", "la préhistoire", "les vestiges". Sayfada un(e) veya (e) yazıyorsa onu da bırak: "un(e) historien(ne)". İki biçim ayrı kalın yazılmışsa ikisini de yaz: "le roi / la reine".
+2. "preposition": fiil bu cümlede bir edatla kullanılıyorsa kalıbı yaz ("dater de", "remonter à", "s'occuper de"). Edat yoksa "".
+3. "meaning": SADECE kısa Türkçe anlam. Bu cümledeki anlamı yaz. Sayfadaki parantez veya "=" açıklamasını Türkçeye çevirerek kullan; Fransızca tanım ekleme.
+4. "example_sentence": o kalın kelimenin geçtiği kitaptaki Fransızca cümleyi aynen kullan. Yeni cümle uydurma, Türkçe yazma, cümleyi kısaltırken kelimeyi düşürme.
 5. Aynı sözcüğü bir kez yaz.
 Yanıtı sadece JSON array olarak döndür.
 [{"word": "", "preposition": "", "meaning": "", "example_sentence": ""}]`;

@@ -230,7 +230,7 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" }) {
           )}
           <p className="text-xs text-slate-400">
             {mode === "textbook"
-              ? "Koyu kelimeler çıkarılır. Anlam Türkçe yazılır, sayfadaki Fransızca açıklama da eklenir."
+              ? "Yalnızca kalın yazılan kelimeler alınır. Anlam Türkçe, örnek cümle kitaptaki cümledir."
               : mode === "press"
                 ? "Yalnızca sarı boyalı kelimeler alınır. Anlam Türkçe, örnek cümle gazetedeki cümledir."
                 : "Önce Gemini dener. Yoğunsa kelimeleri buradan seçersin."}
