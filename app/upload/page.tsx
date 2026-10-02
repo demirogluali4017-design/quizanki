@@ -9,7 +9,7 @@ import { recognizeImages } from "@/lib/ocr";
 import { Flashcard } from "@/types";
 
 type ProcessState = "idle" | "processing" | "success" | "error";
-type Tab = "photo" | "book" | "manual";
+type Tab = "photo" | "book" | "press" | "manual";
 
 export default function UploadPage() {
   const [tab, setTab] = useState<Tab>("photo");
@@ -24,19 +24,26 @@ export default function UploadPage() {
           </Link>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <TabButton active={tab === "photo"} onClick={() => setTab("photo")}>
             📷 Fotoğraf Yükle
           </TabButton>
           <TabButton active={tab === "book"} onClick={() => setTab("book")}>
             📖 Kitap sayfası
           </TabButton>
+          <TabButton active={tab === "press"} onClick={() => setTab("press")}>
+            📰 Sarı kelimeler
+          </TabButton>
           <TabButton active={tab === "manual"} onClick={() => setTab("manual")}>
             ✍️ Manuel Ekle
           </TabButton>
         </div>
 
-        {tab === "manual" ? <ManualAddPanel /> : <PhotoUploadPanel mode={tab === "book" ? "textbook" : "list"} />}
+        {tab === "manual" ? (
+          <ManualAddPanel />
+        ) : (
+          <PhotoUploadPanel mode={tab === "book" ? "textbook" : tab === "press" ? "press" : "list"} />
+        )}
       </div>
     </main>
   );
@@ -68,7 +75,7 @@ function TabButton({
 // ============================================================
 // SEKME 1: Fotoğraf(lar)ı yükle → Gemini ile çıkar (azami 3 sayfa)
 // ============================================================
-function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" }) {
+function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" }) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [state, setState] = useState<ProcessState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -199,6 +206,8 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" }) {
               </span>
             ) : mode === "textbook" ? (
               `${selectedFiles.length} kitap sayfasındaki koyu kelimeleri çıkar`
+            ) : mode === "press" ? (
+              `${selectedFiles.length} sayfadaki sarı kelimeleri çıkar`
             ) : (
               `${selectedFiles.length} Sayfayı İşle ve Kelimeleri Çıkar`
             )}
@@ -222,7 +231,9 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" }) {
           <p className="text-xs text-slate-400">
             {mode === "textbook"
               ? "Koyu kelimeler çıkarılır. Anlam Türkçe yazılır, sayfadaki Fransızca açıklama da eklenir."
-              : "Önce Gemini dener. Yoğunsa kelimeleri buradan seçersin."}
+              : mode === "press"
+                ? "Yalnızca sarı boyalı kelimeler alınır. Anlam Türkçe, örnek cümle gazetedeki cümledir."
+                : "Önce Gemini dener. Yoğunsa kelimeleri buradan seçersin."}
           </p>
         </div>
       )}

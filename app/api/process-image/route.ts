@@ -28,6 +28,18 @@ Kurallar:
 5. Aynı sözcüğü bir kez yaz.
 Yanıtı sadece JSON array olarak döndür.
 [{"word": "", "preposition": "", "meaning": "", "example_sentence": ""}]`;
+const PRESS_PROMPT = `Bu görsel bir Fransızca gazete veya dergi sayfasıdır. Okuyucu bilmediği kelimeleri SARI fosforlu kalemle boyamıştır.
+
+SADECE sarı boyalı sözcük veya tamlamaları çıkar. Boyanmamış kelimeleri, kişi adlarını, manşetteki boyasız kısmı, fotoğraf altını ve sayfa numarasını kart yapma. Bir tamlamada yalnızca bir kelime sarıysa sadece o kelimeyi al; bütün sarıysa tamlamayı bölme ("mi-mandat", "désastre électoral").
+
+Kurallar:
+1. "word": fiilse mastar yaz ("déchire" gördüysen "déchirer"). İsimse cinsiyeti gösteren tanımlığı ekle: "la contestation", "la crue", "le déploiement", "l'emprise". Sayfada un(e) veya (e) yazıyorsa onu da bırak.
+2. "preposition": fiil bu cümlede bir edatla kullanılıyorsa kalıbı yaz ("se déployer", "s'emparer de"). Edat yoksa "".
+3. "meaning": SADECE kısa Türkçe anlam. Bu cümledeki anlamı yaz, sözlükteki alakasız ikinci anlamı yazma. Fransızca tanım ekleme.
+4. "example_sentence": o sarı kelimenin geçtiği gazetedeki Fransızca cümleyi aynen kullan. Yeni cümle uydurma, Türkçe yazma, cümleyi kısaltırken kelimeyi düşürme.
+5. Aynı sözcüğü bir kez yaz.
+Yanıtı sadece JSON array olarak döndür.
+[{"word": "", "preposition": "", "meaning": "", "example_sentence": ""}]`;
 function extractJsonArray(rawText: string): ExtractedWord[] {
   const cleaned = rawText
     .trim()
@@ -170,7 +182,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const files = formData.getAll("images") as File[];
     const mode = String(formData.get("mode") || "list");
-    const prompt = mode === "textbook" ? TEXTBOOK_PROMPT : EXTRACTION_PROMPT;
+    const prompt = mode === "textbook" ? TEXTBOOK_PROMPT : mode === "press" ? PRESS_PROMPT : EXTRACTION_PROMPT;
     if (!files || files.length === 0) {
       return NextResponse.json(
         {
