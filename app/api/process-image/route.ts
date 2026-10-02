@@ -15,6 +15,19 @@ const EXTRACTION_PROMPT = `Bu görsel(ler)deki Fransızca kelimeleri çıkar. Bi
 Yanıtı sadece ve strictly JSON array formatında döndür, başka hiçbir açıklama ekleme.
 Format:
 [{"word": "", "preposition": "", "meaning": "", "example_sentence": ""}]`;
+
+const TEXTBOOK_PROMPT = `Bu görsel bir Fransızca kelime kitabı sayfasıdır. Kelimeler tablo halinde değil, cümlelerin içinde koyu (bold) yazılır. Parantez veya "=" işareti Fransızca açıklama verir. Örnek: "vestiges (des restes)", "l'aristocratie = des aristocrates = des nobles".
+
+SADECE koyu yazılmış öğretilen sözcük ve kalıpları çıkar. Normal puntoyla yazılmış kelimeleri, kişi adlarını (Émile, Ève, Jacques, Louis XIV gibi), sayfa numarasını, bölüm başlığını ve "Remarque" kelimesini kart yapma. Remarque cümlesi bir sözcüğün anlamını netleştiriyorsa yalnızca o sözcüğün anlamında kullan.
+
+Kurallar:
+1. "word": sözlük maddesi. Tekil yaz; fiilse mastar yaz. "le/la/les" tanım edatını kelimenin başına ekleme. Birden fazla kelimelik kalıbı bölme: "Moyen Âge", "Révolution française", "siècle des Lumières".
+2. "preposition": fiil sayfada bir edatla geçiyorsa kalıbı yaz ("dater de", "remonter à", "s'occuper de", "faire partie de"). Edat yoksa "".
+3. "meaning": önce kısa ve doğru Türkçe anlam. Sayfada parantez veya "=" ile Fransızca açıklama varsa onu AYNEN ekle. Yoksa Larousse tarzı, tek satırlık Fransızca tanım yaz. İkisini " · " ile ayır. Örnek: "kalıntılar · des restes".
+4. "example_sentence": o kelimenin geçtiği sayfadaki Fransızca cümleyi kullan. Cümleyi uzatma, yeni cümle uydurma, Türkçe yazma. Sayfada cümle yoksa kısa bir Fransızca örnek üret.
+5. Aynı sözcüğü bir kez yaz.
+Yanıtı sadece JSON array olarak döndür.
+[{"word": "", "preposition": "", "meaning": "", "example_sentence": ""}]`;
 function extractJsonArray(rawText: string): ExtractedWord[] {
   const cleaned = rawText
     .trim()
@@ -156,6 +169,8 @@ export async function POST(request: NextRequest) {
     }
     const formData = await request.formData();
     const files = formData.getAll("images") as File[];
+    const mode = String(formData.get("mode") || "list");
+    const prompt = mode === "textbook" ? TEXTBOOK_PROMPT : EXTRACTION_PROMPT;
     if (!files || files.length === 0) {
       return NextResponse.json(
         {
@@ -206,7 +221,7 @@ export async function POST(request: NextRequest) {
         role: "user",
         parts: [
           {
-            text: EXTRACTION_PROMPT,
+            text: prompt,
           },
           ...imageParts,
         ],

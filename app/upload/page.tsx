@@ -9,7 +9,7 @@ import { recognizeImages } from "@/lib/ocr";
 import { Flashcard } from "@/types";
 
 type ProcessState = "idle" | "processing" | "success" | "error";
-type Tab = "photo" | "manual";
+type Tab = "photo" | "book" | "manual";
 
 export default function UploadPage() {
   const [tab, setTab] = useState<Tab>("photo");
@@ -28,12 +28,15 @@ export default function UploadPage() {
           <TabButton active={tab === "photo"} onClick={() => setTab("photo")}>
             📷 Fotoğraf Yükle
           </TabButton>
+          <TabButton active={tab === "book"} onClick={() => setTab("book")}>
+            📖 Kitap sayfası
+          </TabButton>
           <TabButton active={tab === "manual"} onClick={() => setTab("manual")}>
             ✍️ Manuel Ekle
           </TabButton>
         </div>
 
-        {tab === "photo" ? <PhotoUploadPanel /> : <ManualAddPanel />}
+        {tab === "manual" ? <ManualAddPanel /> : <PhotoUploadPanel mode={tab === "book" ? "textbook" : "list"} />}
       </div>
     </main>
   );
@@ -65,7 +68,7 @@ function TabButton({
 // ============================================================
 // SEKME 1: Fotoğraf(lar)ı yükle → Gemini ile çıkar (azami 3 sayfa)
 // ============================================================
-function PhotoUploadPanel() {
+function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" }) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [state, setState] = useState<ProcessState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -130,6 +133,7 @@ function PhotoUploadPanel() {
 
       const formData = new FormData();
       compressedFiles.forEach((file) => formData.append("images", file));
+      formData.append("mode", mode);
 
       const res = await fetch("/api/process-image", {
         method: "POST",
@@ -193,10 +197,13 @@ function PhotoUploadPanel() {
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
                 Gemini {selectedFiles.length} sayfayı analiz ediyor...
               </span>
+            ) : mode === "textbook" ? (
+              `${selectedFiles.length} kitap sayfasındaki koyu kelimeleri çıkar`
             ) : (
               `${selectedFiles.length} Sayfayı İşle ve Kelimeleri Çıkar`
             )}
           </button>
+          {mode === "list" && (
           <button
             onClick={handleOcr}
             disabled={state === "processing" || Boolean(ocrProgress)}
@@ -211,8 +218,11 @@ function PhotoUploadPanel() {
               "OCR ile kelime seç"
             )}
           </button>
+          )}
           <p className="text-xs text-slate-400">
-            Önce Gemini dener. Yoğunsa kelimeleri buradan seçersin.
+            {mode === "textbook"
+              ? "Koyu kelimeler çıkarılır. Anlam Türkçe yazılır, sayfadaki Fransızca açıklama da eklenir."
+              : "Önce Gemini dener. Yoğunsa kelimeleri buradan seçersin."}
           </p>
         </div>
       )}
