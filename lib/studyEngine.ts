@@ -298,6 +298,30 @@ export function getTestableWord(card: Flashcard): string {
   return card.preposition ? `${card.word} ${card.preposition}` : card.word;
 }
 
+function hasTurkishOnlyLetters(text: string): boolean {
+  return /[ğĞşŞıİ]/.test(text);
+}
+
+/** Fransızca kelime gösterilip Türkçe anlamı sorulabilir mi? */
+export function frenchToTurkishPrompt(card: Flashcard): { label: string; heading: string } | null {
+  const word = getTestableWord(card).trim();
+  const meaning = (card.meaning ?? "").trim();
+  if (!meaning) return null;
+
+  const sameAsMeaning = word.toLocaleLowerCase("tr") === meaning.toLocaleLowerCase("tr");
+  if (word && !sameAsMeaning && !hasTurkishOnlyLetters(word)) {
+    return { label: "Bu kelimenin Türkçe anlamı nedir?", heading: word };
+  }
+
+  const sentence = (card.example_sentence ?? "").trim();
+  const sentenceIsMeaning = sentence.toLocaleLowerCase("tr") === meaning.toLocaleLowerCase("tr");
+  if (sentence && sentence !== word && !sentenceIsMeaning && !hasTurkishOnlyLetters(sentence)) {
+    return { label: "Bu cümledeki kelimenin Türkçe anlamı nedir?", heading: sentence };
+  }
+
+  return null;
+}
+
 // Tamamen rastgele değil: benzer kelime uzunluğu / aynı havuzdan seçim.
 // Kullanıcının önceden karıştırdığı kelimeler (weak/struggle kayıtlı
 // kartlar) varsa onlara öncelik verilir — böylece distractor'lar
@@ -390,6 +414,11 @@ export function buildQuestion(card: Flashcard, pool: Flashcard[]): StudyQuestion
   const type = pickQuestionType(card, pool.length);
 
   if (type === "mcq_fr_to_tr") {
+    if (!frenchToTurkishPrompt(card)) {
+      const fillBlank = buildFillBlankQuestion(card, pool);
+      if (fillBlank) return fillBlank;
+      return { type: "recall", card };
+    }
     return {
       type,
       card,
@@ -399,6 +428,11 @@ export function buildQuestion(card: Flashcard, pool: Flashcard[]): StudyQuestion
   }
 
   if (type === "mcq_tr_to_fr") {
+    if (!frenchToTurkishPrompt(card)) {
+      const fillBlank = buildFillBlankQuestion(card, pool);
+      if (fillBlank) return fillBlank;
+      return { type: "recall", card };
+    }
     return {
       type,
       card,
@@ -443,7 +477,7 @@ export function buildTestQuestion(card: Flashcard, pool: Flashcard[]): StudyQues
     if (fillBlank) return fillBlank;
   }
 
-  if (type === "mcq_tr_to_fr") {
+  if (type === "mcq_tr_to_fr" && frenchToTurkishPrompt(card)) {
     return {
       type,
       card,
@@ -452,11 +486,23 @@ export function buildTestQuestion(card: Flashcard, pool: Flashcard[]): StudyQues
     };
   }
 
+  if (frenchToTurkishPrompt(card)) {
+    return {
+      type: "mcq_fr_to_tr",
+      card,
+      options: buildMcqOptions(card, pool, "meaning"),
+      correctAnswer: card.meaning,
+    };
+  }
+
+  const fillBlank = buildFillBlankQuestion(card, pool);
+  if (fillBlank) return fillBlank;
+
   return {
-    type: "mcq_fr_to_tr",
+    type: "mcq_tr_to_fr",
     card,
-    options: buildMcqOptions(card, pool, "meaning"),
-    correctAnswer: card.meaning,
+    options: buildMcqOptions(card, pool, "word"),
+    correctAnswer: getTestableWord(card),
   };
 }
 

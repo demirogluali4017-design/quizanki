@@ -5,7 +5,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { fetchAllRows } from "@/lib/fetchAll";
 import { Flashcard, StudyQuestion } from "@/types";
-import { buildTestQuestion, getTestableWord } from "@/lib/studyEngine";
+import { buildTestQuestion, frenchToTurkishPrompt, getTestableWord } from "@/lib/studyEngine";
 
 const TEST_LENGTH = 15;
 const BASE_POINTS = 100;
@@ -161,23 +161,23 @@ export default function TestModePage() {
   const current = questions[currentIndex];
   const answered = phase === "answered";
 
-  const promptText =
-    current?.type === "mcq_fr_to_tr"
-      ? "Bu kelimenin Türkçe anlamı nedir?"
-      : current?.type === "mcq_tr_to_fr"
-        ? "Bu anlama gelen Fransızca kelime hangisi?"
-        : current?.type === "synonym"
-          ? "Bu kelimeyle aynı anlam grubundan olan hangisi?"
-          : "Boşluğu doğru kelimeyle tamamla:";
+  const frenchPrompt = current?.type === "mcq_fr_to_tr" ? frenchToTurkishPrompt(current.card) : null;
 
-  const promptHeading =
-    current?.type === "mcq_fr_to_tr"
-      ? getTestableWord(current.card)
-      : current?.type === "mcq_tr_to_fr"
-        ? current.card.meaning
-        : current?.type === "synonym"
-          ? getTestableWord(current.card)
-          : current?.blankedSentence;
+  const promptText = frenchPrompt
+    ? frenchPrompt.label
+    : current?.type === "mcq_tr_to_fr"
+      ? "Bu anlama gelen Fransızca kelime hangisi?"
+      : current?.type === "synonym"
+        ? "Bu kelimeyle aynı anlam grubundan olan hangisi?"
+        : "Boşluğu doğru kelimeyle tamamla:";
+
+  const promptHeading = frenchPrompt
+    ? frenchPrompt.heading
+    : current?.type === "mcq_tr_to_fr"
+      ? current.card.meaning
+      : current?.type === "synonym"
+        ? getTestableWord(current.card)
+        : current?.blankedSentence;
 
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-slate-950 px-6 py-12">

@@ -19,6 +19,7 @@ import {
   LEARNING_STAGE_LABELS,
   CARD_STATUS_LABELS,
   getTestableWord,
+  frenchToTurkishPrompt,
   getGroupSiblings,
 } from "@/lib/studyEngine";
 
@@ -347,23 +348,23 @@ function McqView({
   const status = deriveCardStatus(question.card);
   const answered = phase === "mcq_answered";
 
-  const promptText =
-    question.type === "mcq_fr_to_tr"
-      ? "Bu kelimenin Türkçe anlamı nedir?"
-      : question.type === "mcq_tr_to_fr"
-        ? "Bu anlama gelen Fransızca kelime hangisi?"
-        : question.type === "synonym"
-          ? "Bu kelimeyle aynı anlam grubundan olan hangisi?"
-          : "Boşluğu doğru kelimeyle tamamla:";
+  const frenchPrompt = question.type === "mcq_fr_to_tr" ? frenchToTurkishPrompt(question.card) : null;
 
-  const promptHeading =
-    question.type === "mcq_fr_to_tr"
-      ? getTestableWord(question.card)
-      : question.type === "mcq_tr_to_fr"
-        ? question.card.meaning
-        : question.type === "synonym"
-          ? getTestableWord(question.card)
-          : question.blankedSentence;
+  const promptText = frenchPrompt
+    ? frenchPrompt.label
+    : question.type === "mcq_tr_to_fr"
+      ? "Bu anlama gelen Fransızca kelime hangisi?"
+      : question.type === "synonym"
+        ? "Bu kelimeyle aynı anlam grubundan olan hangisi?"
+        : "Boşluğu doğru kelimeyle tamamla:";
+
+  const promptHeading = frenchPrompt
+    ? frenchPrompt.heading
+    : question.type === "mcq_tr_to_fr"
+      ? question.card.meaning
+      : question.type === "synonym"
+        ? getTestableWord(question.card)
+        : question.blankedSentence;
 
   return (
     <div className="space-y-6">
