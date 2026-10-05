@@ -35,6 +35,35 @@ export function parseTable(raw: string): ExtractedWord[] {
   }));
 }
 
+type AiPayload = {
+  success?: boolean;
+  errors?: { message?: string }[];
+  result?: { response?: string; description?: string };
+};
+
+function endpoint(account: string) {
+  return `https://api.cloudflare.com/client/v4/accounts/${account}/ai/run/${BOOK_TABLE_MODEL}`;
+}
+
+async function runModel(account: string, token: string, body: unknown): Promise<AiPayload> {
+  const response = await fetch(endpoint(account), {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  return (await response.json()) as AiPayload;
+}
+
+function failureMessage(payload: AiPayload): string | null {
+  if (payload.success === false || (payload.errors && payload.errors.length > 0 && !payload.result?.response)) {
+    return payload.errors?.map((item) => item.message).filter(Boolean).join(" ") || "Model yanıt vermedi.";
+  }
+  return null;
+}
+
 export async function photoToTable(image: Buffer, mime: string): Promise<ExtractedWord[]> {
   const account = process.env.CLOUDFLARE_ACCOUNT_ID;
   const token = process.env.CLOUDFLARE_API_TOKEN;
@@ -43,41 +72,27 @@ export async function photoToTable(image: Buffer, mime: string): Promise<Extract
   }
 
   const dataUrl = `data:${mime || "image/jpeg"};base64,${image.toString("base64")}`;
-  const response = await fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${account}/ai/run/${BOOK_TABLE_MODEL}`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "text", text: TABLE_PROMPT },
-              { type: "image_url", image_url: { url: dataUrl } },
-            ],
-          },
-        ],
-        max_tokens: 2048,
-      }),
-    }
-  );
-
-  const payload = (await response.json()) as {
-    success?: boolean;
-    errors?: { message?: string }[];
-    result?: { response?: string };
+  const requestBody = {
+    messages: [
+      { role: "system", content: "Yanıtın yalnızca istenen JSON array olsun." },
+      { role: "user", content: TABLE_PROMPT },
+    ],
+    image: dataUrl,
+    max_tokens: 2048,
   };
 
-  if (!response.ok || payload.success === false) {
-    const message = payload.errors?.map((item) => item.message).filter(Boolean).join(" ") || "Model yanıt vermedi.";
-    throw new Error(message);
+  let payload = await runModel(account, token, requestBody);
+  let message = failureMessage(payload);
+  if (message && /agree|Model Agreement/i.test(message)) {
+    const agreed = await runModel(account, token, { prompt: "agree" });
+    const agreeError = failureMessage(agreed);
+    if (agreeError && !/agree/i.test(agreeError)) throw new Error(agreeError);
+    payload = await runModel(account, token, requestBody);
+    message = failureMessage(payload);
   }
+  if (message) throw new Error(message);
 
-  const text = payload.result?.response ?? "";
+  const text = payload.result?.response || payload.result?.description || "";
   if (!text) throw new Error("Model boş döndü.");
   return parseTable(text);
 }
