@@ -3,19 +3,17 @@ import { ExtractedWord } from "@/types";
 /** Fotoğrafı yalnızca dört sütunluk tabloya çeviren model. Gemini değildir. */
 export const BOOK_TABLE_MODEL = "@cf/meta/llama-3.2-11b-vision-instruct";
 
-const TABLE_PROMPT = `Bu görsel bir Fransızca kelime kitabı sayfasıdır. Öğretilen kelimeler cümlenin içinde KALIN yazılır. Parantez veya "=" yanındaki ifade açıklamadır, ayrı kart değildir.
+const TABLE_PROMPT = `Bu fotoğraf bir Fransızca fiil tablosudur. Sütunlar: MOT, SYNONYMES, PRÉPOSITION(S), ANTONYMES, EXEMPLE. Tablonun üstünde grubun Türkçe anlamı yazar, örneğin "VERMEK / SAĞLAMAK / SUNMAK".
 
-SADECE kalın sözcük veya tamlamaları çıkar. Kişi adı, sayfa no, başlık ve Remarque kart olmasın. Aynı sözcüğü bir kez yaz.
+Her MOT satırı bir karttır. Satır atlama.
 
-Dört sütun birbirine karışmasın. Kelime ile anlamı aynı hücreye yazmak yasak. "ayır" veya "ayırmak" yazmak yasak.
-
-- word: yalnız Fransızca baş sözcük. Fiilse mastar. İsimse tanımlıkla: "la crue". Edatı ve Türkçe anlamı buraya koyma.
-- preposition: YALNIZCA sayfada o kelimenin yanında gözle gördüğün edatı yaz. Hafızandan edat ekleme, fiile yakışanı uydurma, örnek cümleden edat türetme. Görmediysen "". Gördüysen olduğu gibi, eksiksiz yaz; kısaltma. Birden fazla edat gördüysen araya virgül koy: "à, de".
-- meaning: Türkçe anlamı boş bırakma ve yarım bırakma. Sayfadaki anlamın tamamını yaz. Fransızca kelimeyi tekrar yazma.
-- example_sentence: kitaptaki Fransızca cümle. Yeni cümle uydurma.
+- word: MOT sütunundaki fiil, olduğu gibi. Donner, Fournir, Procurer.
+- preposition: O satırın PRÉPOSITION hücresindeki HER satırı kopyala. "qch.", "qch. à qn.", "qch. à f. qch.", "qch. de qn." birer edattır; bunları boş sanma, kısaltma, "à" diye bozma, örnek cümleden kendin üretme. Birden fazlaysa virgülle yaz: "qch. à f. qch., qch. à qn., qch.". Hücrede ne varsa eksiksiz o.
+- meaning: Üstteki Türkçe başlığın TAMAMI. "VERMEK / SAĞLAMAK / SUNMAK" ise anlam "vermek, sağlamak, sunmak" olsun. Yalnızca ilk kelimeyi yazmak yasak. Boş bırakmak yasak.
+- example_sentence: O satırın EXEMPLE hücresindeki cümle. Hücrede birden fazla cümle varsa hepsini yaz. Başka satırın cümlesini alma.
 
 Yanıt yalnızca JSON array olsun.
-[{"word":"","preposition":"","meaning":"","example_sentence":""}]`;
+[{"word":"Donner","preposition":"qch. à f. qch., qch. à qn.","meaning":"vermek, sağlamak, sunmak","example_sentence":"..."}]`;
 
 function asText(value: unknown): string {
   if (typeof value === "string") return value;
