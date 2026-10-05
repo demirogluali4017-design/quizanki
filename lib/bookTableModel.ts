@@ -3,17 +3,17 @@ import { ExtractedWord } from "@/types";
 /** Fotoğrafı yalnızca dört sütunluk tabloya çeviren model. Gemini değildir. */
 export const BOOK_TABLE_MODEL = "@cf/meta/llama-3.2-11b-vision-instruct";
 
-const TABLE_PROMPT = `Bu fotoğraf bir Fransızca fiil tablosudur. Sütunlar: MOT, SYNONYMES, PRÉPOSITION(S), ANTONYMES, EXEMPLE. Tablonun üstünde grubun Türkçe anlamı yazar, örneğin "VERMEK / SAĞLAMAK / SUNMAK".
+const TABLE_PROMPT = `Bu fotoğraf bir fiil tablosudur. PRÉPOSITION sütununu atlamak yasaktır.
 
-Her MOT satırı bir karttır. Satır atlama.
+Her MOT satırı için:
+- word: MOT hücresindeki fiil.
+- preposition: O satırın PRÉPOSITION hücresinde yazan HER satır, ayrı ayrı. "qch.", "qch. à qn.", "qch. à f. qch.", "qch. de qn." dahil hepsi. Bir satır bile eksik kalmasın. Kısaltma. Örnek cümleden edat uydurma. Hücrede üç satır varsa üçü de gelsin.
+- meaning: Sayfanın üstündeki Türkçe başlığın tamamı. "VERMEK / SAĞLAMAK / SUNMAK" ise "vermek, sağlamak, sunmak". Tek kelimeye indirme.
+- example_sentence: O satırın EXEMPLE hücresi. Birden fazla cümle varsa hepsi.
 
-- word: MOT sütunundaki fiil, olduğu gibi. Donner, Fournir, Procurer.
-- preposition: O satırın PRÉPOSITION hücresindeki HER satırı kopyala. "qch.", "qch. à qn.", "qch. à f. qch.", "qch. de qn." birer edattır; bunları boş sanma, kısaltma, "à" diye bozma, örnek cümleden kendin üretme. Birden fazlaysa virgülle yaz: "qch. à f. qch., qch. à qn., qch.". Hücrede ne varsa eksiksiz o.
-- meaning: Üstteki Türkçe başlığın TAMAMI. "VERMEK / SAĞLAMAK / SUNMAK" ise anlam "vermek, sağlamak, sunmak" olsun. Yalnızca ilk kelimeyi yazmak yasak. Boş bırakmak yasak.
-- example_sentence: O satırın EXEMPLE hücresindeki cümle. Hücrede birden fazla cümle varsa hepsini yaz. Başka satırın cümlesini alma.
-
-Yanıt yalnızca JSON array olsun.
-[{"word":"Donner","preposition":"qch. à f. qch., qch. à qn.","meaning":"vermek, sağlamak, sunmak","example_sentence":"..."}]`;
+preposition alanı dizi olsun. Boş dizi yalnızca hücrede hiç yazı yoksa.
+Yanıt yalnızca JSON array.
+[{"word":"Donner","preposition":["qch. à f. qch.","qch. à qn."],"meaning":"vermek, sağlamak, sunmak","example_sentence":"..."}]`;
 
 function asText(value: unknown): string {
   if (typeof value === "string") return value;
@@ -40,7 +40,9 @@ function toRow(item: unknown): ExtractedWord {
   const row = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
   return {
     word: asText(row.word ?? row.kelime).trim(),
-    preposition: asText(row.preposition ?? row.prep ?? row.edat).trim(),
+    preposition: asText(
+      row.preposition ?? row.prepositions ?? row["préposition"] ?? row["prépositions"] ?? row.prep ?? row.edat
+    ).trim(),
     meaning: asText(row.meaning ?? row.anlam).trim(),
     example_sentence: asText(row.example_sentence ?? row.example ?? row.ornek).trim(),
   };
@@ -103,7 +105,7 @@ function splitGlued(row: ExtractedWord): ExtractedWord {
   }
 
   preposition = preposition
-    .split(/\s*\/\s*|\s*;\s*/)
+    .split(/\s*\/\s*|\s*;\s*|\n+/)
     .map((part) => part.trim())
     .filter(Boolean)
     .join(", ");
@@ -198,7 +200,7 @@ export async function photoToTable(image: Buffer, mime: string): Promise<Extract
   let { text, payload } = await ask({
     prompt: TABLE_PROMPT,
     image: base,
-    max_tokens: 1024,
+    max_tokens: 2048,
   });
 
   if (!text.trim()) {
@@ -219,8 +221,8 @@ export async function photoToTable(image: Buffer, mime: string): Promise<Extract
     return parseTable(text);
   } catch {
     const converted = await ask({
-      prompt: `Bu metni yalnızca JSON array yap. Alanlar: word, preposition, meaning, example_sentence. Başka yazı yazma.\n${text.slice(0, 5000)}`,
-      max_tokens: 1024,
+      prompt: `Bu metni JSON array yap. preposition bir dizi: hücredeki her satır ayrı eleman, hiçbirini silme. Alanlar: word, preposition, meaning, example_sentence.\n${text.slice(0, 5000)}`,
+      max_tokens: 2048,
     });
     if (!converted.text.trim()) throw new Error("Model tablo kuramadı.");
     return parseTable(converted.text);
