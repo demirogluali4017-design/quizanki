@@ -190,9 +190,13 @@ button:not(:disabled),
 
 .lake-caption {
   position: absolute;
-  right: 8%;
-  top: 46%;
-  width: 11rem;
+  right: 6%;
+  top: 43%;
+  width: 12rem;
+  height: 4.2rem;
+  overflow: hidden;
+  border-radius: 1rem;
+  background: rgba(191, 219, 228, 0.78);
   text-align: center;
 }
 

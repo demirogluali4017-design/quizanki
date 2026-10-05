@@ -156,7 +156,15 @@ function WordScenes({ words }: { words: string[] }) {
       </section>
 
       <section className="lake-photo" aria-label="Kelimeleri gölden çeken adam">
-        <img src="/lake-fisher.jpg" alt="Gölde olta tutan adam" className="h-full w-full object-cover object-center" />
+        <video
+          src="/lake-fisher.mp4"
+          poster="/lake-fisher.jpg"
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="h-full w-full object-cover object-center"
+        />
         <div className="lake-caption">
           {words.map((word, index) => (
             <span
