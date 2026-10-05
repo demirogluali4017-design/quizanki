@@ -77,73 +77,104 @@ export default async function HomePage() {
   const newProgress = Math.min(100, Math.round((todayNewWords / Math.max(1, dailyNewGoal)) * 100));
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col px-5 pb-4 pt-8">
-      <p className="text-sm font-semibold text-indigo-600">Bugün</p>
-      <h1 className="mt-1 text-[2rem] font-semibold leading-tight tracking-tight text-slate-900 dark:text-slate-50">
-        Bugün çalışmaya hazırsın.
-      </h1>
-      <p className="mt-2 text-base text-slate-500 dark:text-slate-400">
-        {pkg.totalCount > 0
-          ? `${pkg.totalCount} kelime seni bekliyor.`
-          : "Bugünkü paket boş. Yeni kelime ekleyebilirsin."}
-      </p>
-
-      <Link
-        href="/study/learn"
-        className="mt-6 flex h-14 items-center justify-center rounded-2xl bg-indigo-600 text-base font-semibold text-white"
-      >
-        Bugünün çalışmasına başla
-      </Link>
-
-      <div className="mt-8">
-        <div className="mb-2 flex items-center justify-between text-sm">
-          <span className="text-slate-500">Günlük tekrar</span>
-          <span className="font-medium text-slate-700 dark:text-slate-200">
-            {todayReviews}/{dailyReviewGoal}
-          </span>
-        </div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
-          <div className="h-full bg-indigo-600" style={{ width: `${reviewProgress}%` }} />
-        </div>
-        <div className="mb-2 mt-4 flex items-center justify-between text-sm">
-          <span className="text-slate-500">Yeni kelime</span>
-          <span className="font-medium text-slate-700 dark:text-slate-200">
-            {todayNewWords}/{dailyNewGoal}
-          </span>
-        </div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
-          <div className="h-full bg-emerald-500" style={{ width: `${newProgress}%` }} />
-        </div>
+    <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col px-5 pb-6 pt-6">
+      <div className="home-rise relative overflow-hidden rounded-[2rem] bg-indigo-600 px-6 pb-6 pt-7 text-white">
+        <span className="home-float absolute right-6 top-6 rounded-full bg-amber-300 px-3 py-1 text-xs font-semibold text-slate-900">
+          se contenter
+        </span>
+        <span className="home-float absolute bottom-24 left-5 rounded-full bg-emerald-300 px-3 py-1 text-xs font-semibold text-slate-900 [animation-delay:0.8s]">
+          la crue
+        </span>
+        <p className="text-sm font-semibold text-indigo-100">Bugün</p>
+        <h1 className="mt-2 max-w-[16rem] text-4xl font-semibold leading-tight tracking-tight">
+          Çalışmaya hazırsın.
+        </h1>
+        <p className="mt-3 text-indigo-100">
+          {pkg.totalCount > 0
+            ? `${pkg.totalCount} kelime seni bekliyor.`
+            : "Bugünkü paket boş. Yeni kelime ekleyebilirsin."}
+        </p>
+        <Link
+          href="/study/learn"
+          className="mt-6 flex h-14 items-center justify-center rounded-2xl bg-amber-300 text-base font-semibold text-slate-900"
+        >
+          Bugünün çalışmasına başla
+        </Link>
       </div>
 
-      <dl className="mt-8 grid grid-cols-2 gap-x-6 gap-y-5">
-        <Stat label="Tekrar" value={pkg.dueCards.length} />
-        <Stat label="Yeni" value={pkg.newCards.length} />
-        <Stat label="Seri" value={`${streaks.current}`} hint={`en uzun ${streaks.longest}`} />
-        <Stat label="Hatırlama" value={successRate !== null ? `%${successRate}` : "—"} />
-        <Stat label="Kelime" value={total} />
-        <Stat label="Uzun süreli" value={longTermCount} />
+      <div className="home-rise mt-5 space-y-4 rounded-3xl bg-white p-4 shadow-sm dark:bg-slate-900" style={{ animationDelay: "80ms" }}>
+        <Bar label="Günlük tekrar" done={todayReviews} goal={dailyReviewGoal} progress={reviewProgress} tone="bg-indigo-600" />
+        <Bar label="Yeni kelime" done={todayNewWords} goal={dailyNewGoal} progress={newProgress} tone="bg-emerald-500" />
+      </div>
+
+      <dl className="mt-4 grid grid-cols-2 gap-3">
+        <Stat label="Tekrar" value={pkg.dueCards.length} tone="bg-indigo-100 text-indigo-700" delay="120ms" />
+        <Stat label="Yeni" value={pkg.newCards.length} tone="bg-emerald-100 text-emerald-800" delay="180ms" />
+        <Stat label="Seri" value={streaks.current} hint={`en uzun ${streaks.longest}`} tone="bg-orange-100 text-orange-800" delay="240ms" />
+        <Stat label="Hatırlama" value={successRate !== null ? `%${successRate}` : "—"} tone="bg-amber-100 text-amber-900" delay="300ms" />
+        <Stat label="Kelime" value={total} tone="bg-violet-100 text-violet-800" delay="360ms" />
+        <Stat label="Uzun süreli" value={longTermCount} tone="bg-sky-100 text-sky-800" delay="420ms" />
       </dl>
 
       {(pkg.overdueCards.length > 0 || pkg.weakCards.length > 0) && (
-        <p className="mt-6 text-sm text-slate-500">
+        <p className="home-rise mt-4 text-sm text-slate-500" style={{ animationDelay: "480ms" }}>
           {pkg.overdueCards.length} gecikmiş, {pkg.weakCards.length} zayıf kelime de bugünkü pakette.
         </p>
       )}
 
-      <div className="mt-8">
+      <div className="home-rise mt-6" style={{ animationDelay: "520ms" }}>
         <MotiveLine />
       </div>
     </main>
   );
 }
 
-function Stat({ label, value, hint }: { label: string; value: number | string; hint?: string }) {
+function Bar({
+  label,
+  done,
+  goal,
+  progress,
+  tone,
+}: {
+  label: string;
+  done: number;
+  goal: number;
+  progress: number;
+  tone: string;
+}) {
   return (
     <div>
-      <dt className="text-sm text-slate-500">{label}</dt>
-      <dd className="mt-0.5 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">{value}</dd>
-      {hint && <p className="text-xs text-slate-400">{hint}</p>}
+      <div className="mb-1.5 flex items-center justify-between text-sm">
+        <span className="text-slate-500">{label}</span>
+        <span className="font-semibold text-slate-800 dark:text-slate-100">
+          {done}/{goal}
+        </span>
+      </div>
+      <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+        <div className={`home-bar h-full rounded-full ${tone}`} style={{ width: `${progress}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  hint,
+  tone,
+  delay,
+}: {
+  label: string;
+  value: number | string;
+  hint?: string;
+  tone: string;
+  delay: string;
+}) {
+  return (
+    <div className={`home-rise rounded-2xl px-4 py-3 ${tone}`} style={{ animationDelay: delay }}>
+      <dt className="text-sm font-medium opacity-80">{label}</dt>
+      <dd className="mt-0.5 text-3xl font-semibold tracking-tight">{value}</dd>
+      {hint && <p className="text-xs opacity-70">{hint}</p>}
     </div>
   );
 }
