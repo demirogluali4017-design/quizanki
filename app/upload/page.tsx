@@ -8,8 +8,9 @@ import { compressImages } from "@/lib/imageCompression";
 import { recognizeImages } from "@/lib/ocr";
 import { Flashcard } from "@/types";
 import { invalidateCardCache } from "@/lib/cardCache";
+import { DRAFT_REVIEW, draftBlockReason } from "@/lib/draftReview";
 
-type ProcessState = "idle" | "processing" | "success" | "error";
+type ProcessState = "idle" | "processing" | "review" | "saving" | "success" | "error";
 type Tab = "photo" | "book" | "press" | "manual";
 
 export default function UploadPage() {
@@ -81,6 +82,9 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" }) {
   const [state, setState] = useState<ProcessState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [savedWords, setSavedWords] = useState<Flashcard[]>([]);
+  const [drafts, setDrafts] = useState<
+    { key: string; word: string; preposition: string; meaning: string; example_sentence: string; keep: boolean }[]
+  >([]);
   const [ocrPages, setOcrPages] = useState<
     {
       url: string;
@@ -142,6 +146,7 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" }) {
       const formData = new FormData();
       compressedFiles.forEach((file) => formData.append("images", file));
       formData.append("mode", mode);
+      if (DRAFT_REVIEW) formData.append("draft", "1");
 
       const res = await fetch("/api/process-image", {
         method: "POST",
@@ -166,6 +171,27 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" }) {
         throw new Error(message || "Bilinmeyen bir hata oluştu.");
       }
 
+      if (data.draft) {
+        const rows = (data.words ?? []) as {
+          word?: string;
+          preposition?: string;
+          meaning?: string;
+          example_sentence?: string;
+        }[];
+        setDrafts(
+          rows.map((row, index) => ({
+            key: `${index}-${row.word ?? ""}`,
+            word: row.word ?? "",
+            preposition: row.preposition ?? "",
+            meaning: row.meaning ?? "",
+            example_sentence: row.example_sentence ?? "",
+            keep: true,
+          }))
+        );
+        setState("review");
+        return;
+      }
+
       invalidateCardCache();
       setSavedWords(data.words ?? []);
       setState("success");
@@ -178,8 +204,47 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" }) {
   function handleReset() {
     setSelectedFiles([]);
     setSavedWords([]);
+    setDrafts([]);
     setState("idle");
     setErrorMessage(null);
+  }
+
+  function updateDraft(key: string, field: "word" | "preposition" | "meaning" | "example_sentence", value: string) {
+    setDrafts((rows) => rows.map((row) => (row.key === key ? { ...row, [field]: value } : row)));
+  }
+
+  async function handleSaveDrafts() {
+    const words = drafts
+      .filter((row) => row.keep && !draftBlockReason(row))
+      .map((row) => ({
+        word: row.word,
+        preposition: row.preposition,
+        meaning: row.meaning,
+        example_sentence: row.example_sentence,
+      }));
+    if (words.length === 0) {
+      setErrorMessage("Kaydedilecek sağlam satır yok.");
+      return;
+    }
+
+    setState("saving");
+    setErrorMessage(null);
+    try {
+      const res = await fetch("/api/add-word", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ words }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Kaydedilemedi.");
+      invalidateCardCache();
+      setSavedWords(data.words ?? []);
+      setDrafts([]);
+      setState("success");
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Beklenmeyen hata.");
+      setState("review");
+    }
   }
 
   return (
@@ -189,12 +254,13 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" }) {
           setSelectedFiles(files);
           setState("idle");
           setSavedWords([]);
+          setDrafts([]);
           clearOcr();
         }}
-        disabled={state === "processing" || Boolean(ocrProgress)}
+        disabled={state === "processing" || state === "saving" || Boolean(ocrProgress)}
       />
 
-      {selectedFiles.length > 0 && state !== "success" && !ocrPages && (
+      {selectedFiles.length > 0 && state !== "success" && state !== "review" && state !== "saving" && !ocrPages && (
         <div className="space-y-2">
           <button
             onClick={handleProcess}
@@ -251,6 +317,81 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" }) {
       {state === "error" && errorMessage && (
         <div className="rounded-xl bg-red-50 dark:bg-red-950 border border-red-200 text-red-700 p-4 text-sm">
           ⚠️ {errorMessage}
+        </div>
+      )}
+
+      {(state === "review" || state === "saving") && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              {drafts.filter((row) => row.keep && !draftBlockReason(row)).length} satır kayda hazır. İşaretini kaldırdığın satır girmez.
+            </p>
+            <button onClick={handleReset} className="text-sm text-slate-500 hover:underline">
+              Vazgeç
+            </button>
+          </div>
+          {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
+          <div className="space-y-3">
+            {drafts.map((row) => {
+              const reason = draftBlockReason(row);
+              return (
+                <div
+                  key={row.key}
+                  className={`rounded-xl border bg-white p-3 dark:bg-slate-800 ${
+                    reason ? "border-red-300" : "border-slate-200 dark:border-slate-700"
+                  }`}
+                >
+                  <label className="mb-2 flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={row.keep && !reason}
+                      disabled={Boolean(reason)}
+                      onChange={(event) =>
+                        setDrafts((rows) =>
+                          rows.map((item) => (item.key === row.key ? { ...item, keep: event.target.checked } : item))
+                        )
+                      }
+                    />
+                    {reason ? <span className="text-red-600">{reason}</span> : <span>Kaydet</span>}
+                  </label>
+                  <div className="grid gap-2">
+                    <input
+                      value={row.word}
+                      onChange={(event) => updateDraft(row.key, "word", event.target.value)}
+                      className="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900"
+                      placeholder="Kelime"
+                    />
+                    <input
+                      value={row.preposition}
+                      onChange={(event) => updateDraft(row.key, "preposition", event.target.value)}
+                      className="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900"
+                      placeholder="Preposition"
+                    />
+                    <input
+                      value={row.meaning}
+                      onChange={(event) => updateDraft(row.key, "meaning", event.target.value)}
+                      className="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900"
+                      placeholder="Anlam"
+                    />
+                    <textarea
+                      value={row.example_sentence}
+                      onChange={(event) => updateDraft(row.key, "example_sentence", event.target.value)}
+                      className="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900"
+                      placeholder="Örnek cümle"
+                      rows={2}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <button
+            onClick={handleSaveDrafts}
+            disabled={state === "saving"}
+            className="w-full rounded-xl bg-indigo-600 py-3 font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+          >
+            {state === "saving" ? "Kaydediliyor..." : "Seçilenleri kaydet"}
+          </button>
         </div>
       )}
 

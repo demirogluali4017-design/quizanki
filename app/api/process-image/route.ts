@@ -184,6 +184,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const files = formData.getAll("images") as File[];
     const mode = String(formData.get("mode") || "list");
+    const draft = formData.get("draft") === "1";
     const prompt = mode === "textbook" ? TEXTBOOK_PROMPT : mode === "press" ? PRESS_PROMPT : EXTRACTION_PROMPT;
     if (!files || files.length === 0) {
       return NextResponse.json(
@@ -308,6 +309,19 @@ export async function POST(request: NextRequest) {
       in_learning_phase: false,
       learning_streak: 0,
     }));
+    if (draft) {
+      return NextResponse.json({
+        success: true,
+        draft: true,
+        count: rowsToInsert.length,
+        words: rowsToInsert.map((row) => ({
+          word: row.word,
+          preposition: row.preposition ?? "",
+          meaning: row.meaning,
+          example_sentence: row.example_sentence,
+        })),
+      });
+    }
     const supabaseAdmin =
       createServiceRoleClient();
     const {
