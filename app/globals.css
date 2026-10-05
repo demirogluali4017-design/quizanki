@@ -93,58 +93,31 @@ button:not(:disabled),
   }
 }
 
-@keyframes run-across {
+@keyframes quote-flow {
   from {
-    left: -18%;
+    transform: translateX(0);
   }
   to {
-    left: 108%;
+    transform: translateX(-50%);
   }
 }
 
-@keyframes stride {
-  from {
-    transform: rotate(-34deg);
-  }
-  to {
-    transform: rotate(30deg);
-  }
-}
-
-@keyframes run-bob {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-4px);
-  }
-}
-
-.runner-lane {
-  position: relative;
-  height: 84px;
+.quote-lane {
   overflow: hidden;
 }
 
-.runner {
-  position: absolute;
-  bottom: 0;
-  animation: run-across linear infinite;
+.quote-track {
+  display: flex;
+  width: max-content;
+  animation: quote-flow 46s linear infinite;
 }
 
-.runner-bob {
-  animation: run-bob 0.36s ease-in-out infinite;
-}
-
-.limb {
-  transform-box: fill-box;
-  transform-origin: center top;
-  animation: stride 0.32s ease-in-out infinite alternate;
-}
-
-.limb-late {
-  animation-delay: -0.32s;
+.quote-item {
+  margin: 0;
+  padding-right: 2.5rem;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  white-space: nowrap;
 }
 
 @keyframes home-bar {
