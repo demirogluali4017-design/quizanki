@@ -11,7 +11,7 @@ import { invalidateCardCache } from "@/lib/cardCache";
 import { DRAFT_REVIEW, draftBlockReason } from "@/lib/draftReview";
 
 type ProcessState = "idle" | "processing" | "review" | "saving" | "success" | "error";
-type Tab = "photo" | "book" | "press" | "manual";
+type Tab = "photo" | "book" | "press" | "trial" | "manual";
 
 export default function UploadPage() {
   const [tab, setTab] = useState<Tab>("photo");
@@ -36,6 +36,9 @@ export default function UploadPage() {
           <TabButton active={tab === "press"} onClick={() => setTab("press")}>
             📰 Sarı kelimeler
           </TabButton>
+          <TabButton active={tab === "trial"} onClick={() => setTab("trial")}>
+            Deneme tablo
+          </TabButton>
           <TabButton active={tab === "manual"} onClick={() => setTab("manual")}>
             ✍️ Manuel Ekle
           </TabButton>
@@ -44,7 +47,9 @@ export default function UploadPage() {
         {tab === "manual" ? (
           <ManualAddPanel />
         ) : (
-          <PhotoUploadPanel mode={tab === "book" ? "textbook" : tab === "press" ? "press" : "list"} />
+          <PhotoUploadPanel
+            mode={tab === "book" ? "textbook" : tab === "press" ? "press" : tab === "trial" ? "trial" : "list"}
+          />
         )}
       </div>
     </main>
@@ -77,7 +82,7 @@ function TabButton({
 // ============================================================
 // SEKME 1: Fotoğraf(lar)ı yükle → Gemini ile çıkar (azami 3 sayfa)
 // ============================================================
-function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" }) {
+function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "trial" }) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [state, setState] = useState<ProcessState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -275,6 +280,11 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" }) {
 
   return (
     <div className="space-y-6">
+      {mode === "trial" && (
+        <p className="text-sm text-slate-600 dark:text-slate-300">
+          Fotoğrafı seç, sonra aşağıdaki butona bas. Tablo çıkar, kaydetmez.
+        </p>
+      )}
       <MultiFileUploadZone
         onFilesChanged={(files) => {
           setSelectedFiles(files);
@@ -288,7 +298,17 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" }) {
         disabled={state === "processing" || state === "saving" || Boolean(ocrProgress)}
       />
 
-      {selectedFiles.length > 0 && state !== "success" && state !== "review" && state !== "saving" && !ocrPages && (
+      {mode === "trial" && state !== "success" && (
+        <button
+          onClick={handleTrial}
+          disabled={selectedFiles.length === 0 || trialBusy}
+          className="w-full rounded-xl bg-[#0f6b5c] py-3 font-medium text-white disabled:opacity-50"
+        >
+          {trialBusy ? "Tablo modeli sayfayı okuyor..." : "Tablo modelini çalıştır"}
+        </button>
+      )}
+
+      {selectedFiles.length > 0 && mode !== "trial" && state !== "success" && state !== "review" && state !== "saving" && !ocrPages && (
         <div className="space-y-2">
           <button
             onClick={handleProcess}
@@ -308,15 +328,6 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" }) {
               `${selectedFiles.length} Sayfayı İşle ve Kelimeleri Çıkar`
             )}
           </button>
-          {mode === "textbook" && (
-            <button
-              onClick={handleTrial}
-              disabled={state === "processing" || trialBusy}
-              className="w-full rounded-xl border border-slate-300 bg-white py-3 font-medium text-slate-800 transition-colors hover:border-indigo-400 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-            >
-              {trialBusy ? "Tablo modeli sayfayı okuyor..." : "Deneme: tablo modeli (kaydetmez)"}
-            </button>
-          )}
           {mode === "list" && (
           <button
             onClick={handleOcr}
