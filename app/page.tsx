@@ -155,18 +155,18 @@ function WordScenes({ words }: { words: string[] }) {
         <div className="word-crate">kutu</div>
       </section>
 
-      <section className="lake-stage" aria-label="Kelimeleri gölden çeken adam">
-        <div className="lake" />
-        <div className="fisher">
-          <Person />
-          <div className="rod" />
-          <div className="hooks">
-            {words.map((word, index) => (
-              <span key={`fish-${word}-${index}`} className="fish-word" style={{ animationDelay: `${index * 1.6}s` }}>
-                {word}
-              </span>
-            ))}
-          </div>
+      <section className="lake-photo" aria-label="Kelimeleri gölden çeken adam">
+        <img src="/lake-fisher.jpg" alt="Gölde olta tutan adam" className="h-full w-full object-cover object-center" />
+        <div className="lake-caption">
+          {words.map((word, index) => (
+            <span
+              key={`fish-${word}-${index}`}
+              className="hook-word"
+              style={{ animationDelay: `${index * 2.2}s`, animationDuration: `${Math.max(words.length, 1) * 2.2}s` }}
+            >
+              {word}
+            </span>
+          ))}
         </div>
       </section>
     </div>
