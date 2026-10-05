@@ -95,14 +95,10 @@ export async function photoToTable(image: Buffer, mime: string): Promise<Extract
     throw new Error("CLOUDFLARE_ACCOUNT_ID ve CLOUDFLARE_API_TOKEN tanımlı değil.");
   }
 
-  const dataUrl = `data:${mime || "image/jpeg"};base64,${image.toString("base64")}`;
   const requestBody = {
-    messages: [
-      { role: "system", content: "Yanıtın yalnızca istenen JSON array olsun." },
-      { role: "user", content: TABLE_PROMPT },
-    ],
-    image: dataUrl,
-    max_tokens: 2048,
+    prompt: TABLE_PROMPT,
+    image: image.toString("base64"),
+    max_tokens: 1024,
   };
 
   let payload = await runModel(account, token, requestBody);
@@ -116,7 +112,10 @@ export async function photoToTable(image: Buffer, mime: string): Promise<Extract
   }
   if (message) throw new Error(message);
 
-  const text = asText(payload.result);
-  if (!text.trim()) throw new Error("Model boş döndü.");
+  const text = asText(payload.result) || asText(payload);
+  if (!text.trim()) {
+    const preview = JSON.stringify(payload).slice(0, 280);
+    throw new Error(`Model boş döndü. ${preview}`);
+  }
   return parseTable(text);
 }

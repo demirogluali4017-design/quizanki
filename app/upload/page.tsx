@@ -218,7 +218,7 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "tri
     setTrialError(null);
     setTrialRows(null);
     try {
-      const [compressed] = await compressImages([file]);
+      const [compressed] = await compressImages([file], { maxDimension: 1024, quality: 0.6, force: true });
       const formData = new FormData();
       formData.append("image", compressed);
       const res = await fetch("/api/book-table", { method: "POST", body: formData });

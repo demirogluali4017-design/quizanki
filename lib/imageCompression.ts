@@ -13,16 +13,20 @@
 const MAX_DIMENSION = 1600; // px, en uzun kenar
 const JPEG_QUALITY = 0.82;
 
-export async function compressImage(file: File): Promise<File> {
-  // Zaten küçükse (örn. galeriden gelen optimize edilmiş görsel) dokunma
-  if (file.size <= 1.2 * 1024 * 1024) {
+export async function compressImage(
+  file: File,
+  options?: { maxDimension?: number; quality?: number; force?: boolean }
+): Promise<File> {
+  const maxDimension = options?.maxDimension ?? MAX_DIMENSION;
+  const quality = options?.quality ?? JPEG_QUALITY;
+  if (!options?.force && file.size <= 1.2 * 1024 * 1024) {
     return file;
   }
 
   const bitmap = await createImageBitmap(file);
   const { width, height } = bitmap;
 
-  const scale = Math.min(1, MAX_DIMENSION / Math.max(width, height));
+  const scale = Math.min(1, maxDimension / Math.max(width, height));
   const targetWidth = Math.round(width * scale);
   const targetHeight = Math.round(height * scale);
 
@@ -37,7 +41,7 @@ export async function compressImage(file: File): Promise<File> {
   bitmap.close?.();
 
   const blob: Blob | null = await new Promise((resolve) =>
-    canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY)
+    canvas.toBlob(resolve, "image/jpeg", quality)
   );
 
   if (!blob) return file; // sıkıştırma başarısızsa orijinali gönder
@@ -48,8 +52,11 @@ export async function compressImage(file: File): Promise<File> {
   });
 }
 
-export async function compressImages(files: File[]): Promise<File[]> {
-  return Promise.all(files.map((f) => compressImage(f)));
+export async function compressImages(
+  files: File[],
+  options?: { maxDimension?: number; quality?: number; force?: boolean }
+): Promise<File[]> {
+  return Promise.all(files.map((f) => compressImage(f, options)));
 }
 
 function renameToJpg(originalName: string): string {
