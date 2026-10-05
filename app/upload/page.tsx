@@ -96,7 +96,11 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" }) {
     }[] | null
   >(null);
   const [ocrProgress, setOcrProgress] = useState<string | null>(null);
-  const [ocrError, setOcrError] = useState<string | null>(null);
+  const [trialRows, setTrialRows] = useState<
+    { word: string; preposition: string; meaning: string; example_sentence: string }[] | null
+  >(null);
+  const [trialError, setTrialError] = useState<string | null>(null);
+  const [trialBusy, setTrialBusy] = useState(false);
 
   function clearOcr(pages = ocrPages) {
     pages?.forEach((page) => URL.revokeObjectURL(page.url));
@@ -201,6 +205,27 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" }) {
     }
   }
 
+  async function handleTrial() {
+    const file = selectedFiles[0];
+    if (!file || trialBusy) return;
+    setTrialBusy(true);
+    setTrialError(null);
+    setTrialRows(null);
+    try {
+      const [compressed] = await compressImages([file]);
+      const formData = new FormData();
+      formData.append("image", compressed);
+      const res = await fetch("/api/book-table", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Tablo modeli yanıt vermedi.");
+      setTrialRows(data.words ?? []);
+    } catch (err) {
+      setTrialError(err instanceof Error ? err.message : "Deneme başarısız.");
+    } finally {
+      setTrialBusy(false);
+    }
+  }
+
   function handleReset() {
     setSelectedFiles([]);
     setSavedWords([]);
@@ -255,6 +280,8 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" }) {
           setState("idle");
           setSavedWords([]);
           setDrafts([]);
+          setTrialRows(null);
+          setTrialError(null);
           clearOcr();
         }}
         disabled={state === "processing" || state === "saving" || Boolean(ocrProgress)}
@@ -280,6 +307,15 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" }) {
               `${selectedFiles.length} Sayfayı İşle ve Kelimeleri Çıkar`
             )}
           </button>
+          {mode === "textbook" && (
+            <button
+              onClick={handleTrial}
+              disabled={state === "processing" || trialBusy}
+              className="w-full rounded-xl border border-slate-300 bg-white py-3 font-medium text-slate-800 transition-colors hover:border-indigo-400 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            >
+              {trialBusy ? "Tablo modeli sayfayı okuyor..." : "Deneme: tablo modeli (kaydetmez)"}
+            </button>
+          )}
           {mode === "list" && (
           <button
             onClick={handleOcr}
@@ -303,6 +339,40 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" }) {
                 ? "Yalnızca sarı boyalı kelimeler alınır. Anlam Türkçe, örnek cümle gazetedeki cümledir."
                 : "Önce Gemini dener. Yoğunsa kelimeleri buradan seçersin."}
           </p>
+        </div>
+      )}
+
+      {trialError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:bg-red-950">
+          {trialError}
+        </div>
+      )}
+
+      {trialRows && (
+        <div className="space-y-2">
+          <p className="text-sm text-slate-500">Deneme tablosu. Kaydedilmedi. {trialRows.length} satır.</p>
+          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-100 text-left text-slate-500 dark:bg-slate-700">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Kelime</th>
+                  <th className="px-3 py-2 font-medium">Prep</th>
+                  <th className="px-3 py-2 font-medium">Anlam</th>
+                  <th className="px-3 py-2 font-medium">Örnek</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                {trialRows.map((row, index) => (
+                  <tr key={`${row.word}-${index}`}>
+                    <td className="px-3 py-2 font-semibold">{row.word}</td>
+                    <td className="px-3 py-2">{row.preposition || "—"}</td>
+                    <td className="px-3 py-2">{row.meaning}</td>
+                    <td className="px-3 py-2 italic">{row.example_sentence}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
