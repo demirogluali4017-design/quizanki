@@ -15,8 +15,24 @@ Kişi adı, sayfa no ve Remarque kart olmasın. Aynı kelimeyi bir kez yaz.
 Yanıt yalnızca JSON array olsun.
 [{"word":"","preposition":"","meaning":"","example_sentence":""}]`;
 
-export function parseTable(raw: string): ExtractedWord[] {
-  const cleaned = raw
+function asText(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) return value.map(asText).filter(Boolean).join("\n");
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    for (const key of ["response", "description", "text", "content", "output"]) {
+      if (key in record) {
+        const nested = asText(record[key]);
+        if (nested) return nested;
+      }
+    }
+  }
+  return "";
+}
+
+export function parseTable(raw: unknown): ExtractedWord[] {
+  const cleaned = asText(raw)
     .trim()
     .replace(/^```json\s*/i, "")
     .replace(/^```\s*/i, "")
@@ -25,14 +41,22 @@ export function parseTable(raw: string): ExtractedWord[] {
   const start = cleaned.indexOf("[");
   const end = cleaned.lastIndexOf("]");
   const json = start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned;
-  const parsed = JSON.parse(json);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    throw new Error("Model tablo yerine yazı döndürdü.");
+  }
   if (!Array.isArray(parsed)) throw new Error("Model tablo döndürmedi.");
-  return parsed.map((item) => ({
-    word: String(item.word ?? "").trim(),
-    preposition: String(item.preposition ?? "").trim(),
-    meaning: String(item.meaning ?? "").trim(),
-    example_sentence: String(item.example_sentence ?? "").trim(),
-  }));
+  return parsed.map((item) => {
+    const row = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+    return {
+      word: asText(row.word).trim(),
+      preposition: asText(row.preposition).trim(),
+      meaning: asText(row.meaning).trim(),
+      example_sentence: asText(row.example_sentence).trim(),
+    };
+  });
 }
 
 type AiPayload = {
@@ -92,7 +116,7 @@ export async function photoToTable(image: Buffer, mime: string): Promise<Extract
   }
   if (message) throw new Error(message);
 
-  const text = payload.result?.response || payload.result?.description || "";
-  if (!text) throw new Error("Model boş döndü.");
+  const text = asText(payload.result);
+  if (!text.trim()) throw new Error("Model boş döndü.");
   return parseTable(text);
 }
