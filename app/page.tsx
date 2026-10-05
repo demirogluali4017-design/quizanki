@@ -47,6 +47,9 @@ async function getDashboardData() {
   const dailyNewGoal = settingsRow?.daily_new_goal ?? 10;
   const dailyReviewGoal = settingsRow?.daily_review_goal ?? 30;
 
+  const { data: sampleWords } = await supabase.from("flashcards").select("word").limit(8);
+  const words = (sampleWords ?? []).map((row) => row.word as string).filter(Boolean);
+
   return {
     total: cards.length,
     pkg,
@@ -57,6 +60,7 @@ async function getDashboardData() {
     todayNewWords,
     dailyNewGoal,
     dailyReviewGoal,
+    words,
   };
 }
 
@@ -71,6 +75,7 @@ export default async function HomePage() {
     todayNewWords,
     dailyNewGoal,
     dailyReviewGoal,
+    words,
   } = await getDashboardData();
 
   const reviewProgress = Math.min(100, Math.round((todayReviews / Math.max(1, dailyReviewGoal)) * 100));
@@ -96,6 +101,8 @@ export default async function HomePage() {
         </Link>
         <QuoteFlow />
       </div>
+
+      <WordScenes words={words.length > 0 ? words : ["bonjour"]} />
 
       <div className="home-rise mt-5 space-y-4 rounded-3xl bg-white p-4 shadow-sm dark:bg-slate-900" style={{ animationDelay: "80ms" }}>
         <Bar label="Günlük tekrar" done={todayReviews} goal={dailyReviewGoal} progress={reviewProgress} tone="bg-indigo-600" />
@@ -132,6 +139,52 @@ const POLYGLOT_LINES = [
   { name: "Steve Kaufmann", text: "Dil öğrenmek, kendini geliştirmenin en yararlı yollarından biridir." },
   { name: "Steve Kaufmann", text: "Mükemmeli aramadığın sürece öğrenebileceğin dilin sınırı yoktur." },
 ];
+
+function WordScenes({ words }: { words: string[] }) {
+  return (
+    <div className="home-rise mt-4 space-y-3">
+      <section className="push-stage" aria-label="Kelimeleri kutuya koyan Fransız">
+        <Person hat />
+        <div className="push-lane">
+          {words.map((word, index) => (
+            <span key={`push-${word}-${index}`} className="push-chip" style={{ animationDelay: `${index * 1.1}s` }}>
+              {word}
+            </span>
+          ))}
+        </div>
+        <div className="word-crate">kutu</div>
+      </section>
+
+      <section className="lake-stage" aria-label="Kelimeleri gölden çeken adam">
+        <div className="lake" />
+        <div className="fisher">
+          <Person />
+          <div className="rod" />
+          <div className="hooks">
+            {words.map((word, index) => (
+              <span key={`fish-${word}-${index}`} className="fish-word" style={{ animationDelay: `${index * 1.6}s` }}>
+                {word}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function Person({ hat = false }: { hat?: boolean }) {
+  return (
+    <svg className="person" width="54" height="70" viewBox="0 0 54 70" aria-hidden="true">
+      {hat && <ellipse cx="27" cy="8" rx="12" ry="4" fill="#111827" />}
+      {hat && <rect x="17" y="6" width="16" height="5" rx="2" fill="#1f2937" />}
+      <circle cx="27" cy="18" r="8" fill="#f3c7a5" />
+      <path d="M16 30h22l3 18H13l3-18z" fill={hat ? "#1d4ed8" : "#0f766e"} />
+      <rect x="16" y="48" width="7" height="16" rx="3" fill="#334155" />
+      <rect x="31" y="48" width="7" height="16" rx="3" fill="#1e293b" />
+    </svg>
+  );
+}
 
 function QuoteFlow() {
   const loop = [...POLYGLOT_LINES, ...POLYGLOT_LINES];
