@@ -31,32 +31,86 @@ function asText(value: unknown): string {
   return "";
 }
 
+function toRow(item: unknown): ExtractedWord {
+  const row = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+  return {
+    word: asText(row.word ?? row.kelime).trim(),
+    preposition: asText(row.preposition ?? row.prep ?? row.edat).trim(),
+    meaning: asText(row.meaning ?? row.anlam).trim(),
+    example_sentence: asText(row.example_sentence ?? row.example ?? row.ornek).trim(),
+  };
+}
+
+function rowsFromProse(text: string): ExtractedWord[] {
+  const lines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("|") && !/^\|\s*:?-{2,}/.test(line));
+  if (lines.length >= 2) {
+    const cells = lines.map((line) => line.split("|").slice(1, -1).map((cell) => cell.trim()));
+    const body = /kelime|word|anlam|meaning/i.test(cells[0].join(" ")) ? cells.slice(1) : cells;
+    const rows = body
+      .filter((cols) => cols.length >= 2)
+      .map((cols) => ({
+        word: cols[0] ?? "",
+        preposition: cols[1] ?? "",
+        meaning: cols[2] ?? "",
+        example_sentence: cols[3] ?? "",
+      }))
+      .filter((row) => row.word && row.meaning);
+    if (rows.length) return rows;
+  }
+
+  const chunks = text.split(/\n(?=\d+[\).\s]|[-*]\s|word\s*[:：]|kelime\s*[:：])/i);
+  const labeled: ExtractedWord[] = [];
+  for (const chunk of chunks) {
+    const pick = (names: string) => chunk.match(new RegExp(`(?:${names})\\s*[:：]\\s*(.+)`, "i"))?.[1]?.trim() ?? "";
+    const word = pick("word|kelime");
+    const meaning = pick("meaning|anlam");
+    if (!word || !meaning) continue;
+    labeled.push({
+      word,
+      preposition: pick("preposition|prep|edat"),
+      meaning,
+      example_sentence: pick("example_sentence|example|örnek|cümle"),
+    });
+  }
+  return labeled;
+}
+
 export function parseTable(raw: unknown): ExtractedWord[] {
   const cleaned = asText(raw)
     .trim()
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/```\s*$/i, "")
+    .replace(/```json/gi, "")
+    .replace(/```/g, "")
     .trim();
   const start = cleaned.indexOf("[");
   const end = cleaned.lastIndexOf("]");
-  const json = start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned;
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(json);
-  } catch {
-    throw new Error("Model tablo yerine yazı döndürdü.");
+  let json = start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned;
+  if (start >= 0 && end <= start) {
+    const lastObject = cleaned.lastIndexOf("}");
+    if (lastObject > start) json = `${cleaned.slice(start, lastObject + 1).replace(/,\s*$/, "")}]`;
   }
-  if (!Array.isArray(parsed)) throw new Error("Model tablo döndürmedi.");
-  return parsed.map((item) => {
-    const row = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
-    return {
-      word: asText(row.word).trim(),
-      preposition: asText(row.preposition).trim(),
-      meaning: asText(row.meaning).trim(),
-      example_sentence: asText(row.example_sentence).trim(),
-    };
-  });
+  json = json.replace(/,\s*([}\]])/g, "$1").replace(/[“”]/g, '"');
+
+  try {
+    const parsed = JSON.parse(json) as unknown;
+    const list = Array.isArray(parsed)
+      ? parsed
+      : parsed && typeof parsed === "object"
+        ? Object.values(parsed).find((value) => Array.isArray(value))
+        : null;
+    if (Array.isArray(list)) {
+      const rows = list.map(toRow).filter((row) => row.word || row.meaning);
+      if (rows.length) return rows;
+    }
+  } catch {
+    // Yazı veya yarım JSON aşağıda satır satır denenir.
+  }
+
+  const prose = rowsFromProse(cleaned);
+  if (prose.length) return prose;
+  throw new Error("Model tablo yerine yazı döndürdü.");
 }
 
 type AiPayload = {
@@ -98,24 +152,29 @@ export async function photoToTable(image: Buffer, mime: string): Promise<Extract
   const requestBody = {
     prompt: TABLE_PROMPT,
     image: image.toString("base64"),
-    max_tokens: 1024,
+    max_tokens: 1800,
   };
 
-  let payload = await runModel(account, token, requestBody);
-  let message = failureMessage(payload);
-  if (message && /agree|Model Agreement/i.test(message)) {
-    const agreed = await runModel(account, token, { prompt: "agree" });
-    const agreeError = failureMessage(agreed);
-    if (agreeError && !/agree/i.test(agreeError)) throw new Error(agreeError);
-    payload = await runModel(account, token, requestBody);
-    message = failureMessage(payload);
-  }
-  if (message) throw new Error(message);
+  const read = async (prompt: string) => {
+    let payload = await runModel(account, token, { ...requestBody, prompt });
+    let message = failureMessage(payload);
+    if (message && /agree|Model Agreement/i.test(message)) {
+      const agreed = await runModel(account, token, { prompt: "agree" });
+      const agreeError = failureMessage(agreed);
+      if (agreeError && !/agree/i.test(agreeError)) throw new Error(agreeError);
+      payload = await runModel(account, token, { ...requestBody, prompt });
+      message = failureMessage(payload);
+    }
+    if (message) throw new Error(message);
+    const text = asText(payload.result) || asText(payload);
+    if (!text.trim()) throw new Error("Model boş döndü.");
+    return parseTable(text);
+  };
 
-  const text = asText(payload.result) || asText(payload);
-  if (!text.trim()) {
-    const preview = JSON.stringify(payload).slice(0, 280);
-    throw new Error(`Model boş döndü. ${preview}`);
+  try {
+    return await read(TABLE_PROMPT);
+  } catch (err) {
+    if (!(err instanceof Error) || !err.message.includes("yazı")) throw err;
+    return read(`${TABLE_PROMPT}\nAçıklama yazma. Yalnızca JSON array döndür.`);
   }
-  return parseTable(text);
 }
