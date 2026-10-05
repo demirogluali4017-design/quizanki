@@ -301,28 +301,28 @@ function RecallView({
           <button
             onClick={() => onAssess("forgot")}
             disabled={submitting}
-            className="min-h-14 rounded-2xl bg-red-50 text-base font-semibold text-red-700 disabled:opacity-50 dark:bg-red-950"
+            className="min-h-16 rounded-2xl bg-red-500 text-base font-semibold text-white disabled:opacity-50"
           >
             Unuttum
           </button>
           <button
             onClick={() => onAssess("struggled")}
             disabled={submitting}
-            className="min-h-14 rounded-2xl bg-orange-50 text-base font-semibold text-orange-700 disabled:opacity-50 dark:bg-orange-950"
+            className="min-h-16 rounded-2xl bg-orange-500 text-base font-semibold text-white disabled:opacity-50"
           >
             Zorlandım
           </button>
           <button
             onClick={() => onAssess("recalled")}
             disabled={submitting}
-            className="min-h-14 rounded-2xl bg-amber-50 text-base font-semibold text-amber-800 disabled:opacity-50 dark:bg-amber-950"
+            className="min-h-16 rounded-2xl bg-amber-400 text-base font-semibold text-slate-900 disabled:opacity-50"
           >
             Hatırladım
           </button>
           <button
             onClick={() => onAssess("easy")}
             disabled={submitting}
-            className="min-h-14 rounded-2xl bg-emerald-50 text-base font-semibold text-emerald-800 disabled:opacity-50 dark:bg-emerald-950"
+            className="min-h-16 rounded-2xl bg-emerald-500 text-base font-semibold text-white disabled:opacity-50"
           >
             Çok kolaydı
           </button>
@@ -376,9 +376,9 @@ function McqView({
     <div className="space-y-6">
       <StatusBadges stage={stage} status={status} />
 
-      <div className="rounded-3xl bg-white px-6 py-10 text-center dark:bg-slate-900">
-        <p className="text-sm text-slate-400">{promptText}</p>
-        <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-4xl">
+      <div className="rounded-[2rem] bg-indigo-600 px-6 py-12 text-center">
+        <p className="text-sm font-medium text-indigo-100">{promptText}</p>
+        <h2 className="mt-3 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
           {promptHeading}
         </h2>
       </div>

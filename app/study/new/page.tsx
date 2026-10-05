@@ -181,34 +181,34 @@ export default function NewWordsModePage() {
             />
 
             {phase === "back" && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-xl mx-auto">
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => handleAssess("forgot")}
                   disabled={submitting}
-                  className="rounded-xl bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 font-semibold py-3 hover:bg-red-200 dark:hover:bg-red-900 transition-colors disabled:opacity-50"
+                  className="min-h-16 rounded-2xl bg-red-500 text-base font-semibold text-white disabled:opacity-50"
                 >
-                  😖 Unuttum
+                  Unuttum
                 </button>
                 <button
                   onClick={() => handleAssess("struggled")}
                   disabled={submitting}
-                  className="rounded-xl bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 font-semibold py-3 hover:bg-orange-200 dark:hover:bg-orange-900 transition-colors disabled:opacity-50"
+                  className="min-h-16 rounded-2xl bg-orange-500 text-base font-semibold text-white disabled:opacity-50"
                 >
-                  😕 Zorlandım
+                  Zorlandım
                 </button>
                 <button
                   onClick={() => handleAssess("recalled")}
                   disabled={submitting}
-                  className="rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-semibold py-3 hover:bg-amber-200 dark:hover:bg-amber-900 transition-colors disabled:opacity-50"
+                  className="min-h-16 rounded-2xl bg-amber-400 text-base font-semibold text-slate-900 disabled:opacity-50"
                 >
-                  🙂 Hatırladım
+                  Hatırladım
                 </button>
                 <button
                   onClick={() => handleAssess("easy")}
                   disabled={submitting}
-                  className="rounded-xl bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300 font-semibold py-3 hover:bg-green-200 dark:hover:bg-green-900 transition-colors disabled:opacity-50"
+                  className="min-h-16 rounded-2xl bg-emerald-500 text-base font-semibold text-white disabled:opacity-50"
                 >
-                  😄 Çok kolaydı
+                  Çok kolaydı
                 </button>
               </div>
             )}
