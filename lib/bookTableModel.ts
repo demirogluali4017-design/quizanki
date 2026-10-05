@@ -18,15 +18,20 @@ Yanıt yalnızca JSON array olsun.
 function asText(value: unknown): string {
   if (typeof value === "string") return value;
   if (typeof value === "number" || typeof value === "boolean") return String(value);
-  if (Array.isArray(value)) return value.map(asText).filter(Boolean).join("\n");
+  if (Array.isArray(value)) return value.map(asText).filter((part) => part.trim()).join("\n");
   if (value && typeof value === "object") {
     const record = value as Record<string, unknown>;
-    for (const key of ["response", "description", "text", "content", "output"]) {
+    for (const key of ["response", "description", "text", "content", "output", "completion"]) {
       if (key in record) {
         const nested = asText(record[key]);
-        if (nested) return nested;
+        if (nested.trim()) return nested;
       }
     }
+    return Object.entries(record)
+      .filter(([key]) => !["success", "errors", "messages"].includes(key))
+      .map(([, item]) => asText(item))
+      .filter((part) => part.trim())
+      .join("\n");
   }
   return "";
 }
@@ -149,32 +154,47 @@ export async function photoToTable(image: Buffer, mime: string): Promise<Extract
     throw new Error("CLOUDFLARE_ACCOUNT_ID ve CLOUDFLARE_API_TOKEN tanımlı değil.");
   }
 
-  const requestBody = {
-    prompt: TABLE_PROMPT,
-    image: image.toString("base64"),
-    max_tokens: 1800,
-  };
-
-  const read = async (prompt: string) => {
-    let payload = await runModel(account, token, { ...requestBody, prompt });
+  const base = image.toString("base64");
+  const ask = async (body: unknown) => {
+    let payload = await runModel(account, token, body);
     let message = failureMessage(payload);
     if (message && /agree|Model Agreement/i.test(message)) {
-      const agreed = await runModel(account, token, { prompt: "agree" });
-      const agreeError = failureMessage(agreed);
-      if (agreeError && !/agree/i.test(agreeError)) throw new Error(agreeError);
-      payload = await runModel(account, token, { ...requestBody, prompt });
+      await runModel(account, token, { prompt: "agree" });
+      payload = await runModel(account, token, body);
       message = failureMessage(payload);
     }
     if (message) throw new Error(message);
-    const text = asText(payload.result) || asText(payload);
-    if (!text.trim()) throw new Error("Model boş döndü.");
-    return parseTable(text);
+    return { text: asText(payload.result) || asText(payload), payload };
   };
 
+  let { text, payload } = await ask({
+    prompt: TABLE_PROMPT,
+    image: base,
+    max_tokens: 1024,
+  });
+
+  if (!text.trim()) {
+    const again = await ask({
+      messages: [{ role: "user", content: TABLE_PROMPT }],
+      image: `data:${mime || "image/jpeg"};base64,${base}`,
+      max_tokens: 1024,
+    });
+    text = again.text;
+    payload = again.payload;
+  }
+
+  if (!text.trim()) {
+    throw new Error(`Model boş döndü. ${JSON.stringify(payload).slice(0, 320)}`);
+  }
+
   try {
-    return await read(TABLE_PROMPT);
-  } catch (err) {
-    if (!(err instanceof Error) || !err.message.includes("yazı")) throw err;
-    return read(`${TABLE_PROMPT}\nAçıklama yazma. Yalnızca JSON array döndür.`);
+    return parseTable(text);
+  } catch {
+    const converted = await ask({
+      prompt: `Bu metni yalnızca JSON array yap. Alanlar: word, preposition, meaning, example_sentence. Başka yazı yazma.\n${text.slice(0, 5000)}`,
+      max_tokens: 1024,
+    });
+    if (!converted.text.trim()) throw new Error("Model tablo kuramadı.");
+    return parseTable(converted.text);
   }
 }
