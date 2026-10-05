@@ -3,15 +3,17 @@ import { ExtractedWord } from "@/types";
 /** Fotoğrafı yalnızca dört sütunluk tabloya çeviren model. Gemini değildir. */
 export const BOOK_TABLE_MODEL = "@cf/meta/llama-3.2-11b-vision-instruct";
 
-const TABLE_PROMPT = `Bu görsel bir Fransızca kelime kitabı sayfasıdır. Görevin yalnızca kalın yazılmış öğretilen kelimeleri tabloya dökmek.
+const TABLE_PROMPT = `Bu görsel bir Fransızca kelime kitabı sayfasıdır. Öğretilen kelimeler cümlenin içinde KALIN yazılır. Parantez veya "=" yanındaki ifade açıklamadır, ayrı kart değildir.
 
-Her satırda tam dört alan:
-- word: fiilse mastar. İsimse cinsiyet tanımlığıyla yaz (la crue, le roi, l'histoire). Sayfada (e) veya un(e) varsa bırak.
-- preposition: fiil bu cümlede edatla geçiyorsa kalıp, yoksa boş.
-- meaning: kısa Türkçe anlam. Fransızca tanım yazma.
-- example_sentence: o kelimenin geçtiği kitaptaki Fransızca cümle. Yeni cümle uydurma.
+SADECE kalın sözcük veya tamlamaları çıkar. Kişi adı, sayfa no, başlık ve Remarque kart olmasın. Aynı sözcüğü bir kez yaz.
 
-Kişi adı, sayfa no ve Remarque kart olmasın. Aynı kelimeyi bir kez yaz.
+Dört sütun birbirine karışmasın. Kelime ile anlamı aynı hücreye yazmak yasak. "ayır" veya "ayırmak" yazmak yasak.
+
+- word: yalnız Fransızca baş sözcük. Fiilse mastar. İsimse tanımlıkla: "la crue". Edatı ve Türkçe anlamı buraya koyma.
+- preposition: sayfada bu kelimeyle duran HER edatı yaz. "dater de", "remonter à", "s'occuper de" ise preposition "de", "à", "de" olsun; boş bırakma. Birden fazla edat varsa hepsini yaz: "de / à". Edat yoksa "".
+- meaning: yalnız kısa Türkçe anlam. Fransızca kelimeyi tekrar yazma.
+- example_sentence: kitaptaki Fransızca cümle. Yeni cümle uydurma.
+
 Yanıt yalnızca JSON array olsun.
 [{"word":"","preposition":"","meaning":"","example_sentence":""}]`;
 
@@ -83,6 +85,38 @@ function rowsFromProse(text: string): ExtractedWord[] {
   return labeled;
 }
 
+function splitGlued(row: ExtractedWord): ExtractedWord {
+  let { word, preposition, meaning, example_sentence } = row;
+  if (/^(ayır(mak)?|ayrı yaz(ın)?|separate)$/i.test(meaning.trim())) meaning = "";
+
+  const glued = word.match(/^(.+?)\s*(?:=|:|—|–|-|\/)\s*(.+)$/);
+  if (glued) {
+    const left = glued[1].trim();
+    const right = glued[2].trim();
+    const leftTurkish = /[ğĞşŞıİöÖçÇ]/.test(left);
+    const rightTurkish = /[ğĞşŞıİöÖçÇ]/.test(right);
+    if (!leftTurkish && (rightTurkish || !meaning)) {
+      word = left;
+      meaning = meaning || right;
+    } else if (leftTurkish && !rightTurkish) {
+      meaning = meaning || left;
+      word = right;
+    }
+  }
+
+  if (!preposition.trim()) {
+    const attached = word.match(
+      /\s+((?:à|au|aux|de|du|des|d'|en|dans|sur|pour|avec|par|chez|contre|vers|entre|sans|sous)(?:\s*\/\s*(?:à|au|aux|de|du|des|en|dans|sur|pour|avec|par))?)$/i
+    );
+    if (attached?.index) {
+      preposition = attached[1];
+      word = word.slice(0, attached.index).trim();
+    }
+  }
+
+  return { word: word.trim(), preposition: preposition.trim(), meaning: meaning.trim(), example_sentence };
+}
+
 export function parseTable(raw: unknown): ExtractedWord[] {
   const cleaned = asText(raw)
     .trim()
@@ -106,14 +140,14 @@ export function parseTable(raw: unknown): ExtractedWord[] {
         ? Object.values(parsed).find((value) => Array.isArray(value))
         : null;
     if (Array.isArray(list)) {
-      const rows = list.map(toRow).filter((row) => row.word || row.meaning);
+      const rows = list.map(toRow).map(splitGlued).filter((row) => row.word || row.meaning);
       if (rows.length) return rows;
     }
   } catch {
     // Yazı veya yarım JSON aşağıda satır satır denenir.
   }
 
-  const prose = rowsFromProse(cleaned);
+  const prose = rowsFromProse(cleaned).map(splitGlued);
   if (prose.length) return prose;
   throw new Error("Model tablo yerine yazı döndürdü.");
 }
