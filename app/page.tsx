@@ -79,14 +79,9 @@ export default async function HomePage() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col px-5 pb-6 pt-6">
       <div className="home-rise relative overflow-hidden rounded-[2rem] bg-indigo-600 px-6 pb-6 pt-7 text-white">
-        <span className="home-float absolute right-6 top-6 rounded-full bg-amber-300 px-3 py-1 text-xs font-semibold text-slate-900">
-          se contenter
-        </span>
-        <span className="home-float absolute bottom-24 left-5 rounded-full bg-emerald-300 px-3 py-1 text-xs font-semibold text-slate-900 [animation-delay:0.8s]">
-          la crue
-        </span>
         <p className="text-sm font-semibold text-indigo-100">Bugün</p>
-        <h1 className="mt-2 max-w-[16rem] text-4xl font-semibold leading-tight tracking-tight">
+        <span className="sr-only">Koşan öğrenciler</span>
+        <h1 className="mt-2 text-4xl font-semibold leading-tight tracking-tight">
           Çalışmaya hazırsın.
         </h1>
         <p className="mt-3 text-indigo-100">
@@ -100,6 +95,12 @@ export default async function HomePage() {
         >
           Bugünün çalışmasına başla
         </Link>
+        <div className="runner-lane mt-5">
+          <div className="absolute inset-x-0 bottom-1 h-1 rounded-full bg-indigo-400/50" />
+          <Runner shirt="#fbbf24" hair="#1f2937" duration="5.6s" delay="0s" />
+          <Runner shirt="#34d399" hair="#7c2d12" duration="7.2s" delay="-2.4s" />
+          <Runner shirt="#f9a8d4" hair="#111827" duration="6.3s" delay="-4.1s" />
+        </div>
       </div>
 
       <div className="home-rise mt-5 space-y-4 rounded-3xl bg-white p-4 shadow-sm dark:bg-slate-900" style={{ animationDelay: "80ms" }}>
@@ -126,6 +127,42 @@ export default async function HomePage() {
         <MotiveLine />
       </div>
     </main>
+  );
+}
+
+function Runner({
+  shirt,
+  hair,
+  duration,
+  delay,
+}: {
+  shirt: string;
+  hair: string;
+  duration: string;
+  delay: string;
+}) {
+  return (
+    <div className="runner" style={{ animationDuration: duration, animationDelay: delay }}>
+      <div className="runner-bob">
+        <svg width="58" height="76" viewBox="0 0 58 76" aria-hidden="true">
+          <circle cx="29" cy="12" r="8" fill="#f3c7a5" />
+          <path d="M21 8c1-6 14-7 16-1-3-3-12-3-16 1z" fill={hair} />
+          <path d="M20 22h18l3 16H17l3-16z" fill={shirt} />
+          <g className="limb limb-late">
+            <rect x="10" y="22" width="6" height="16" rx="3" fill="#f3c7a5" />
+          </g>
+          <g className="limb">
+            <rect x="42" y="22" width="6" height="16" rx="3" fill="#e7b48f" />
+          </g>
+          <g className="limb">
+            <rect x="20" y="38" width="7" height="20" rx="3" fill="#334155" />
+          </g>
+          <g className="limb limb-late">
+            <rect x="31" y="38" width="7" height="20" rx="3" fill="#1e293b" />
+          </g>
+        </svg>
+      </div>
+    </div>
   );
 }
 
