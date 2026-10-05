@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { getCachedCards, invalidateCardCache } from "@/lib/cardCache";
@@ -25,6 +25,18 @@ import {
 
 type Phase = "loading" | "empty" | "recall_front" | "recall_back" | "mcq_pending" | "mcq_answered" | "done";
 
+type ReviewPayload = {
+  repetitions: number;
+  interval: number;
+  ease_factor: number;
+  next_review_date: string;
+  correct_count: number;
+  incorrect_count: number;
+  struggle_count: number;
+  is_weak: boolean;
+  last_reviewed_at: string;
+};
+
 const STATUS_BADGE_CLASSES: Record<string, string> = {
   new: "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300",
   due: "bg-amber-100 dark:bg-amber-950 text-amber-700",
@@ -41,8 +53,11 @@ export default function StudyPage() {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [reviewedCount, setReviewedCount] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
-  const [submitting, setSubmitting] = useState(false);
   const [packageSummary, setPackageSummary] = useState({ due: 0, overdue: 0, weak: 0, fresh: 0 });
+  const [saveWarning, setSaveWarning] = useState<string | null>(null);
+  const answeredIds = useRef(new Set<string>());
+  const saveChain = useRef(Promise.resolve());
+  const poolRef = useRef<Flashcard[]>([]);
 
   const loadCards = useCallback(async () => {
     setPhase("loading");
@@ -53,6 +68,7 @@ export default function StudyPage() {
       return;
     }
 
+    poolRef.current = cards;
     setAllCards(cards);
 
     const pkg = buildDailyPackage(cards);
@@ -85,12 +101,50 @@ export default function StudyPage() {
     return `${reviewedCount} / ${total}`;
   }, [queue.length, reviewedCount]);
 
-  async function finalizeReview(card: Flashcard, assessment: SelfAssessment) {
-    if (submitting) return;
-    setSubmitting(true);
+  function showQuestion(card: Flashcard) {
+    const question = buildQuestion(card, poolRef.current);
+    setCurrentQuestion(question);
+    setSelectedOption(null);
+    setPhase(question.type === "recall" ? "recall_front" : "mcq_pending");
+  }
+
+  function restoreFailedCard(card: Flashcard, assessment: SelfAssessment) {
+    answeredIds.current.delete(card.id);
+    setReviewedCount((count) => Math.max(0, count - 1));
+    if (assessment !== "forgot") {
+      setCorrectCount((count) => Math.max(0, count - 1));
+    }
+    setSaveWarning(`${card.word} kaydedilemedi. Paketin sonuna alındı.`);
+    setQueue((current) => {
+      if (current.length === 0) {
+        showQuestion(card);
+        return [card];
+      }
+      return [...current, card];
+    });
+  }
+
+  async function persistReview(card: Flashcard, payload: ReviewPayload, assessment: SelfAssessment) {
+    let lastError = "ağ hatası";
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const { error } = await supabase.from("flashcards").update(payload).eq("id", card.id);
+      if (!error) {
+        invalidateCardCache();
+        logDailyActivity(supabase, { review: true, newWord: card.repetitions === 0 });
+        return;
+      }
+      lastError = error.message;
+      await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
+    }
+    console.error("Kart kaydedilemedi:", lastError);
+    restoreFailedCard(card, assessment);
+  }
+
+  function finalizeReview(card: Flashcard, assessment: SelfAssessment) {
+    if (answeredIds.current.has(card.id)) return;
+    answeredIds.current.add(card.id);
 
     const rating = mapAssessmentToRating(assessment);
-
     const sm2Result = calculateSM2(
       {
         repetitions: card.repetitions,
@@ -99,38 +153,23 @@ export default function StudyPage() {
       },
       rating
     );
-
     const weakUpdate = computeWeakWordUpdate(card, assessment);
-
-    const { error } = await supabase
-      .from("flashcards")
-      .update({
-        repetitions: sm2Result.repetitions,
-        interval: sm2Result.interval,
-        ease_factor: sm2Result.ease_factor,
-        next_review_date: sm2Result.next_review_date,
-        correct_count: weakUpdate.correct_count,
-        incorrect_count: weakUpdate.incorrect_count,
-        struggle_count: weakUpdate.struggle_count,
-        is_weak: weakUpdate.is_weak,
-        last_reviewed_at: new Date().toISOString(),
-      })
-      .eq("id", card.id);
-
-    if (error) {
-      alert("Kart güncellenirken hata oluştu: " + error.message);
-      setSubmitting(false);
-      return;
-    }
-    invalidateCardCache();
-
-    // Streak/günlük hedef için aktiviteyi logla (SM-2 verisini etkilemez)
-    logDailyActivity(supabase, { review: true, newWord: card.repetitions === 0 });
+    const payload: ReviewPayload = {
+      repetitions: sm2Result.repetitions,
+      interval: sm2Result.interval,
+      ease_factor: sm2Result.ease_factor,
+      next_review_date: sm2Result.next_review_date,
+      correct_count: weakUpdate.correct_count,
+      incorrect_count: weakUpdate.incorrect_count,
+      struggle_count: weakUpdate.struggle_count,
+      is_weak: weakUpdate.is_weak,
+      last_reviewed_at: new Date().toISOString(),
+    };
 
     if (assessment !== "forgot") {
-      setCorrectCount((c) => c + 1);
+      setCorrectCount((count) => count + 1);
     }
-    setReviewedCount((c) => c + 1);
+    setReviewedCount((count) => count + 1);
 
     const nextQueue = queue.slice(1);
     setQueue(nextQueue);
@@ -140,13 +179,12 @@ export default function StudyPage() {
       setPhase("done");
       setCurrentQuestion(null);
     } else {
-      const nextCard = nextQueue[0];
-      const nextQuestion = buildQuestion(nextCard, allCards);
-      setCurrentQuestion(nextQuestion);
-      setPhase(nextQuestion.type === "recall" ? "recall_front" : "mcq_pending");
+      showQuestion(nextQueue[0]);
     }
 
-    setSubmitting(false);
+    saveChain.current = saveChain.current
+      .then(() => persistReview(card, payload, assessment))
+      .catch(() => restoreFailedCard(card, assessment));
   }
 
   function handleShowAnswer() {
@@ -186,6 +224,12 @@ export default function StudyPage() {
           </Link>
         </div>
 
+        {saveWarning && (
+          <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+            {saveWarning}
+          </p>
+        )}
+
         {phase !== "empty" && phase !== "done" && (
           <div>
             <div className="mb-2 flex items-center justify-between text-sm text-slate-500">
@@ -207,7 +251,7 @@ export default function StudyPage() {
               Bugünlük tekrar edilecek kart kalmadı!
             </p>
             <p className="text-slate-500 dark:text-slate-400 text-sm">
-              Yeni kartlar yüklemek için &apos;Kart Yükle&apos; sayfasına git.
+              Yeni kartlar yüklemek için 'Kart Yükle' sayfasına git.
             </p>
           </div>
         )}
@@ -228,7 +272,7 @@ export default function StudyPage() {
           <RecallView
             question={currentQuestion}
             phase={phase}
-            submitting={submitting}
+            submitting={false}
             pool={allCards}
             onShowAnswer={handleShowAnswer}
             onAssess={(assessment) => finalizeReview(currentQuestion.card, assessment)}
@@ -242,7 +286,7 @@ export default function StudyPage() {
               question={currentQuestion}
               phase={phase}
               selectedOption={selectedOption}
-              submitting={submitting}
+              submitting={false}
               onSelect={handleMcqSelect}
               onContinue={handleMcqContinue}
             />
@@ -252,9 +296,6 @@ export default function StudyPage() {
   );
 }
 
-// ============================================================
-// RECALL — kelimeyi zihinden hatırla, sonra cevabı gör, öz-değerlendir
-// ============================================================
 function RecallView({
   question,
   phase,
@@ -332,9 +373,6 @@ function RecallView({
   );
 }
 
-// ============================================================
-// MCQ / FILL BLANK — çoktan seçmeli soru görünümü
-// ============================================================
 function McqView({
   question,
   phase,
