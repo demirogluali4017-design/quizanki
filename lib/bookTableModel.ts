@@ -10,8 +10,8 @@ SADECE kalın sözcük veya tamlamaları çıkar. Kişi adı, sayfa no, başlık
 Dört sütun birbirine karışmasın. Kelime ile anlamı aynı hücreye yazmak yasak. "ayır" veya "ayırmak" yazmak yasak.
 
 - word: yalnız Fransızca baş sözcük. Fiilse mastar. İsimse tanımlıkla: "la crue". Edatı ve Türkçe anlamı buraya koyma.
-- preposition: sayfada bu kelimeyle duran HER edatı yaz. "dater de", "remonter à", "s'occuper de" ise preposition "de", "à", "de" olsun; boş bırakma. Birden fazla edat varsa hepsini yaz: "de / à". Edat yoksa "".
-- meaning: yalnız kısa Türkçe anlam. Fransızca kelimeyi tekrar yazma.
+- preposition: YALNIZCA sayfada o kelimenin yanında gözle gördüğün edatı yaz. Hafızandan edat ekleme, fiile yakışanı uydurma, örnek cümleden edat türetme. Görmediysen "". Gördüysen olduğu gibi, eksiksiz yaz; kısaltma. Birden fazla edat gördüysen araya virgül koy: "à, de".
+- meaning: Türkçe anlamı boş bırakma ve yarım bırakma. Sayfadaki anlamın tamamını yaz. Fransızca kelimeyi tekrar yazma.
 - example_sentence: kitaptaki Fransızca cümle. Yeni cümle uydurma.
 
 Yanıt yalnızca JSON array olsun.
@@ -104,17 +104,13 @@ function splitGlued(row: ExtractedWord): ExtractedWord {
     }
   }
 
-  if (!preposition.trim()) {
-    const attached = word.match(
-      /\s+((?:à|au|aux|de|du|des|d'|en|dans|sur|pour|avec|par|chez|contre|vers|entre|sans|sous)(?:\s*\/\s*(?:à|au|aux|de|du|des|en|dans|sur|pour|avec|par))?)$/i
-    );
-    if (attached?.index) {
-      preposition = attached[1];
-      word = word.slice(0, attached.index).trim();
-    }
-  }
+  preposition = preposition
+    .split(/\s*\/\s*|\s*;\s*/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(", ");
 
-  return { word: word.trim(), preposition: preposition.trim(), meaning: meaning.trim(), example_sentence };
+  return { word: word.trim(), preposition, meaning: meaning.trim(), example_sentence };
 }
 
 export function parseTable(raw: unknown): ExtractedWord[] {
