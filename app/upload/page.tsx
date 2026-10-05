@@ -96,6 +96,7 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" }) {
     }[] | null
   >(null);
   const [ocrProgress, setOcrProgress] = useState<string | null>(null);
+  const [ocrError, setOcrError] = useState<string | null>(null);
   const [trialRows, setTrialRows] = useState<
     { word: string; preposition: string; meaning: string; example_sentence: string }[] | null
   >(null);
