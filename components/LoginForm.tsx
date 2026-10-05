@@ -34,16 +34,8 @@ export default function LoginForm() {
   }
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="w-full max-w-sm"
-    >
-      <p className="text-sm font-semibold text-indigo-600">Quizanki</p>
-      <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-        Fransızca kelimeleri gerçekten hatırla.
-      </h1>
-
-      <label className="mt-6 block text-sm text-slate-600 dark:text-slate-300" htmlFor="email">
+    <form onSubmit={onSubmit} className="w-full">
+      <label className="block text-sm text-slate-600 dark:text-slate-300" htmlFor="email">
         E-posta
       </label>
       <input
