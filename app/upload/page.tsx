@@ -7,6 +7,7 @@ import OcrWordPicker from "@/components/OcrWordPicker";
 import { compressImages } from "@/lib/imageCompression";
 import { recognizeImages } from "@/lib/ocr";
 import { Flashcard } from "@/types";
+import { invalidateCardCache } from "@/lib/cardCache";
 
 type ProcessState = "idle" | "processing" | "success" | "error";
 type Tab = "photo" | "book" | "press" | "manual";
@@ -165,6 +166,7 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" }) {
         throw new Error(message || "Bilinmeyen bir hata oluştu.");
       }
 
+      invalidateCardCache();
       setSavedWords(data.words ?? []);
       setState("success");
     } catch (err) {
@@ -334,6 +336,7 @@ function ManualAddPanel() {
       }
 
       setAddedCount((c) => c + 1);
+      invalidateCardCache();
       setState("success");
       resetForm();
     } catch (err) {

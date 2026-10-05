@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { fetchAllRows } from "@/lib/fetchAll";
+import { getCachedCards } from "@/lib/cardCache";
 import { Flashcard, StudyQuestion } from "@/types";
 import { buildTestQuestion, frenchToTurkishPrompt, getTestableWord } from "@/lib/studyEngine";
 
@@ -58,9 +58,7 @@ export default function TestModePage() {
   useEffect(() => {
     async function setup() {
       setPhase("loading");
-      const cards = await fetchAllRows<Flashcard>((from, to) =>
-        supabase.from("flashcards").select("*").range(from, to)
-      );
+      const cards = await getCachedCards();
 
       await fetchPersonalBest();
 

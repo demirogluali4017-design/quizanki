@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { fetchAllRows } from "@/lib/fetchAll";
+import { getCachedCards, invalidateCardCache } from "@/lib/cardCache";
 import { calculateSM2 } from "@/lib/sm2";
 import { logDailyActivity } from "@/lib/dailyActivity";
 import { Flashcard, SelfAssessment, StudyQuestion } from "@/types";
@@ -46,9 +46,7 @@ export default function StudyPage() {
 
   const loadCards = useCallback(async () => {
     setPhase("loading");
-    const cards = await fetchAllRows<Flashcard>((from, to) =>
-      supabase.from("flashcards").select("*").range(from, to)
-    );
+    const cards = await getCachedCards();
 
     if (cards.length === 0) {
       setPhase("empty");
@@ -124,6 +122,7 @@ export default function StudyPage() {
       setSubmitting(false);
       return;
     }
+    invalidateCardCache();
 
     // Streak/günlük hedef için aktiviteyi logla (SM-2 verisini etkilemez)
     logDailyActivity(supabase, { review: true, newWord: card.repetitions === 0 });

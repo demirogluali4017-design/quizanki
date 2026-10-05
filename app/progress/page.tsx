@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { fetchAllRows } from "@/lib/fetchAll";
+import { fetchAllFlashcards } from "@/lib/loadCards";
 import { computeStreaks } from "@/lib/dailyActivity";
 import {
   deriveLearningStage,
@@ -15,9 +15,7 @@ export const fetchCache = "force-no-store";
 
 async function getProgressData() {
   const supabase = await createSupabaseServerClient();
-  const cards = await fetchAllRows<Flashcard>((from, to) =>
-    supabase.from("flashcards").select("*").range(from, to)
-  );
+  const cards = await fetchAllFlashcards(supabase);
 
   const { data: activityRows } = await supabase
     .from("daily_activity")

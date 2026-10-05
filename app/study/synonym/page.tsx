@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
-import { fetchAllRows } from "@/lib/fetchAll";
+import { getCachedCards } from "@/lib/cardCache";
 import { Flashcard } from "@/types";
 
 const MAX_PAIRS = 6;
@@ -130,9 +129,7 @@ export default function SynonymMatchPage() {
   useEffect(() => {
     async function setup() {
       setPhase("loading");
-      const cards = await fetchAllRows<Flashcard>((from, to) =>
-        supabase.from("flashcards").select("*").range(from, to)
-      );
+      const cards = await getCachedCards();
       poolRef.current = cards;
       setupRound(cards);
     }

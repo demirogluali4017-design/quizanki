@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { fetchAllRows } from "@/lib/fetchAll";
+import { getCachedCards } from "@/lib/cardCache";
 import { Flashcard } from "@/types";
 
 const PAIRS_COUNT = 6;
@@ -89,9 +89,7 @@ export default function MatchModePage() {
   useEffect(() => {
     async function setup() {
       setPhase("loading");
-      const cards = await fetchAllRows<Flashcard>((from, to) =>
-        supabase.from("flashcards").select("*").range(from, to)
-      );
+      const cards = await getCachedCards();
       await fetchPersonalBest();
 
       if (cards.length < 2) {
@@ -178,9 +176,7 @@ export default function MatchModePage() {
 
   async function handleRestart() {
     setPhase("loading");
-    const cards = await fetchAllRows<Flashcard>((from, to) =>
-      supabase.from("flashcards").select("*").range(from, to)
-    );
+    const cards = await getCachedCards();
     if (cards.length < 2) {
       setPhase("empty");
       return;

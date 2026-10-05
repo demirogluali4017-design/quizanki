@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { fetchAllRows } from "@/lib/fetchAll";
+import { getCachedCards, invalidateCardCache } from "@/lib/cardCache";
 import { Flashcard, WordGroup } from "@/types";
 import {
   deriveLearningStage,
@@ -49,9 +49,7 @@ export default function WordsPage() {
   async function fetchAll() {
     setLoading(true);
     const [wordData, { data: groupData }] = await Promise.all([
-      fetchAllRows<Flashcard>((from, to) =>
-        supabase.from("flashcards").select("*").order("created_at", { ascending: false }).range(from, to)
-      ),
+      getCachedCards().then((rows) => [...rows].sort((a, b) => b.created_at.localeCompare(a.created_at))),
       supabase.from("word_groups").select("*").order("name", { ascending: true }),
     ]);
     setWords(wordData);
@@ -122,6 +120,7 @@ export default function WordsPage() {
     if (!confirm("Bu kelimeyi silmek istediğine emin misin?")) return;
     const { error } = await supabase.from("flashcards").delete().eq("id", id);
     if (!error) {
+      invalidateCardCache();
       setWords((prev) => prev.filter((w) => w.id !== id));
     }
   }
@@ -161,6 +160,7 @@ export default function WordsPage() {
   async function updateWordGroup(wordIds: string[], groupId: string | null) {
     const { error } = await supabase.from("flashcards").update({ group_id: groupId }).in("id", wordIds);
     if (!error) {
+      invalidateCardCache();
       const idSet = new Set(wordIds);
       setWords((prev) => prev.map((w) => (idSet.has(w.id) ? { ...w, group_id: groupId } : w)));
     } else {
@@ -403,6 +403,7 @@ export default function WordsPage() {
     }
 
     const idSet = new Set(ids);
+    invalidateCardCache();
     setWords((prev) => prev.filter((w) => !idSet.has(w.id)));
     setBulkBusy(false);
     setSelectedIds(new Set());
@@ -450,6 +451,7 @@ export default function WordsPage() {
       return;
     }
 
+    invalidateCardCache();
     setWords((prev) =>
       prev.map((w) =>
         w.id === id

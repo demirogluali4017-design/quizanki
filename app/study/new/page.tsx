@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { fetchAllRows } from "@/lib/fetchAll";
+import { invalidateCardCache } from "@/lib/cardCache";
 import { calculateSM2 } from "@/lib/sm2";
 import { logDailyActivity } from "@/lib/dailyActivity";
 import { Flashcard, SelfAssessment } from "@/types";
@@ -102,6 +103,7 @@ export default function NewWordsModePage() {
       setSubmitting(false);
       return;
     }
+    invalidateCardCache();
 
     logDailyActivity(supabase, { review: true, newWord: true });
 

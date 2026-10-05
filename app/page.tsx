@@ -1,8 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { fetchAllRows } from "@/lib/fetchAll";
+import { fetchAllFlashcards, STATS_COLUMNS } from "@/lib/loadCards";
 import { buildDailyPackage } from "@/lib/studyEngine";
 import { computeStreaks } from "@/lib/dailyActivity";
-import { Flashcard } from "@/types";
 import MotiveLine from "@/components/MotiveLine";
 
 export const dynamic = "force-dynamic";
@@ -11,9 +10,7 @@ export const fetchCache = "force-no-store";
 
 async function getDashboardData() {
   const supabase = await createSupabaseServerClient();
-  const cards = await fetchAllRows<Flashcard>((from, to) =>
-    supabase.from("flashcards").select("*").range(from, to)
-  );
+  const cards = await fetchAllFlashcards(supabase, STATS_COLUMNS);
 
   const pkg = buildDailyPackage(cards);
 

@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
-import { fetchAllRows } from "@/lib/fetchAll";
+import { getCachedCards } from "@/lib/cardCache";
 import { Flashcard } from "@/types";
 import FlashCardView from "@/components/FlashCardView";
 
@@ -16,9 +15,7 @@ export default function CardsBrowsePage() {
   useEffect(() => {
     async function fetchCards() {
       setLoading(true);
-      const data = await fetchAllRows<Flashcard>((from, to) =>
-        supabase.from("flashcards").select("*").order("created_at", { ascending: false }).range(from, to)
-      );
+      const data = [...(await getCachedCards())].sort((a, b) => b.created_at.localeCompare(a.created_at));
       setCards(data);
       setLoading(false);
     }
