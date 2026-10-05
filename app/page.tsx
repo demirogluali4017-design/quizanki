@@ -60,6 +60,17 @@ async function getDashboardData() {
 }
 
 export default async function HomePage() {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const owner = process.env.OWNER_EMAIL?.trim().toLowerCase();
+  const allowed = Boolean(user) && (!owner || user?.email?.toLowerCase() === owner);
+  if (!allowed) return <ProductDoor />;
+  return <Dashboard />;
+}
+
+async function Dashboard() {
   const {
     total,
     pkg,
@@ -115,6 +126,31 @@ export default async function HomePage() {
           {pkg.overdueCards.length} gecikmiş, {pkg.weakCards.length} zayıf kelime de bugünkü pakette.
         </p>
       )}
+    </main>
+  );
+}
+
+function ProductDoor() {
+  return (
+    <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col justify-center px-5 py-12">
+      <p className="text-sm font-semibold text-indigo-600">Quizanki</p>
+      <h1 className="mt-2 text-4xl font-semibold leading-tight tracking-tight text-slate-900 dark:text-slate-50">
+        Fransızca kelimeleri gerçekten hatırla.
+      </h1>
+      <p className="mt-3 text-base text-slate-500">
+        Gazetedeki bilmediğin kelime bugünün kartı olur. Unuttuğun kelime yarın geri gelir.
+      </p>
+      <ul className="mt-6 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+        <li>Fotoğraftan kelime alırsın.</li>
+        <li>Her gün yalnız o günkü paketi çalışırsın.</li>
+        <li>Unuttum, zorlandım, hatırladım ya da çok kolaydı dersin.</li>
+      </ul>
+      <Link
+        href="/login"
+        className="mt-8 flex h-14 items-center justify-center rounded-2xl bg-indigo-600 text-base font-semibold text-white"
+      >
+        Giriş yap
+      </Link>
     </main>
   );
 }

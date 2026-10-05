@@ -29,12 +29,12 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isLogin = path === "/login";
+  const isPublic = path === "/login" || path === "/";
   const isCron = path.startsWith("/api/send-reminder");
   const owner = process.env.OWNER_EMAIL?.trim().toLowerCase();
   const allowed = Boolean(user) && (!owner || user?.email?.toLowerCase() === owner);
 
-  if (!allowed && !isLogin && !isCron) {
+  if (!allowed && !isPublic && !isCron) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
     redirectUrl.search = "";
@@ -43,7 +43,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  if (allowed && isLogin) {
+  if (allowed && path === "/login") {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/";
     redirectUrl.search = "";

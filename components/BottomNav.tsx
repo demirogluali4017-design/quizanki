@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 const ITEMS = [
   { href: "/", label: "Ana", icon: HomeIcon },
@@ -13,7 +15,14 @@ const ITEMS = [
 
 export default function BottomNav() {
   const path = usePathname();
-  if (path === "/login") return null;
+  const [authed, setAuthed] = useState(path !== "/");
+
+  useEffect(() => {
+    if (path !== "/") return;
+    supabase.auth.getUser().then(({ data }) => setAuthed(Boolean(data.user)));
+  }, [path]);
+
+  if (path === "/login" || !authed) return null;
 
   return (
     <>
