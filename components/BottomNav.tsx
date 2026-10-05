@@ -18,8 +18,8 @@ export default function BottomNav() {
   return (
     <>
       <div className="h-24" />
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-[#fffcf7]/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
-        <ul className="mx-auto flex max-w-lg items-stretch justify-between px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5">
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/80 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
+        <ul className="mx-auto flex max-w-lg items-end justify-between px-1 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-1">
           {ITEMS.map((item) => {
             const active = item.href === "/" ? path === "/" : path.startsWith(item.href);
             const Icon = item.icon;
@@ -27,14 +27,27 @@ export default function BottomNav() {
               <li key={item.href} className="flex-1">
                 <Link
                   href={item.href}
-                  className={`flex flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 text-[11px] ${
-                    active
-                      ? "text-[#0f6b5c]"
-                      : "text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-200"
+                  aria-current={active ? "page" : undefined}
+                  className={`flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-1 text-[11px] ${
+                    item.href === "/study"
+                      ? active
+                        ? "text-white"
+                        : "text-indigo-700 dark:text-indigo-200"
+                      : active
+                        ? "text-indigo-600"
+                        : "text-slate-400"
                   }`}
                 >
-                  <Icon active={active} />
-                  <span className={active ? "font-semibold" : ""}>{item.label}</span>
+                  <span
+                    className={
+                      item.href === "/study"
+                        ? `flex h-9 w-9 items-center justify-center rounded-full ${active ? "bg-indigo-600" : "bg-indigo-50 dark:bg-indigo-950"}`
+                        : ""
+                    }
+                  >
+                    <Icon active={active || item.href === "/study"} />
+                  </span>
+                  <span className={active || item.href === "/study" ? "font-semibold" : ""}>{item.label}</span>
                 </Link>
               </li>
             );

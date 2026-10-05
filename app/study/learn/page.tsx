@@ -173,23 +173,30 @@ export default function StudyPage() {
     );
   }
 
+  const sessionTotal = queue.length + reviewedCount;
+  const sessionProgress = sessionTotal > 0 ? Math.round((reviewedCount / sessionTotal) * 100) : 0;
+
   return (
-    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 px-6 py-12">
-      <div className="max-w-3xl mx-auto space-y-8">
+    <main className="min-h-screen px-5 pb-6 pt-6">
+      <div className="mx-auto max-w-xl space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">🧠 Öğren</h1>
-          <Link href="/study" className="text-sm text-indigo-600 hover:underline">
-            ← Mod seçimine dön
+          <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Öğren</h1>
+          <Link href="/study" className="text-sm font-medium text-indigo-600">
+            Modlar
           </Link>
         </div>
 
         {phase !== "empty" && phase !== "done" && (
-          <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
-            <span>
-              Bugünkü paket: {packageSummary.overdue} gecikmiş · {packageSummary.weak} zayıf ·{" "}
-              {packageSummary.due} tekrar · {packageSummary.fresh} yeni
-            </span>
-            <span className="font-semibold text-slate-600 dark:text-slate-300">{progressLabel}</span>
+          <div>
+            <div className="mb-2 flex items-center justify-between text-sm text-slate-500">
+              <span>{progressLabel}</span>
+            </div>
+            <div className="h-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+              <div className="h-full bg-indigo-600 transition-[width]" style={{ width: `${sessionProgress}%` }} />
+            </div>
+            <p className="mt-2 text-xs text-slate-400">
+              {packageSummary.overdue} gecikmiş · {packageSummary.weak} zayıf · {packageSummary.due} tekrar · {packageSummary.fresh} yeni
+            </p>
           </div>
         )}
 
@@ -290,34 +297,34 @@ function RecallView({
       )}
 
       {phase === "recall_back" && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-xl mx-auto">
+        <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => onAssess("forgot")}
             disabled={submitting}
-            className="rounded-xl bg-red-100 dark:bg-red-950 text-red-700 font-semibold py-3 hover:bg-red-200 transition-colors disabled:opacity-50"
+            className="min-h-14 rounded-2xl bg-red-50 text-base font-semibold text-red-700 disabled:opacity-50 dark:bg-red-950"
           >
-            😖 Unuttum
+            Unuttum
           </button>
           <button
             onClick={() => onAssess("struggled")}
             disabled={submitting}
-            className="rounded-xl bg-orange-100 dark:bg-orange-950 text-orange-700 font-semibold py-3 hover:bg-orange-200 transition-colors disabled:opacity-50"
+            className="min-h-14 rounded-2xl bg-orange-50 text-base font-semibold text-orange-700 disabled:opacity-50 dark:bg-orange-950"
           >
-            😕 Zorlandım
+            Zorlandım
           </button>
           <button
             onClick={() => onAssess("recalled")}
             disabled={submitting}
-            className="rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-700 font-semibold py-3 hover:bg-amber-200 transition-colors disabled:opacity-50"
+            className="min-h-14 rounded-2xl bg-amber-50 text-base font-semibold text-amber-800 disabled:opacity-50 dark:bg-amber-950"
           >
-            🙂 Hatırladım
+            Hatırladım
           </button>
           <button
             onClick={() => onAssess("easy")}
             disabled={submitting}
-            className="rounded-xl bg-green-100 dark:bg-green-950 text-green-700 font-semibold py-3 hover:bg-green-200 transition-colors disabled:opacity-50"
+            className="min-h-14 rounded-2xl bg-emerald-50 text-base font-semibold text-emerald-800 disabled:opacity-50 dark:bg-emerald-950"
           >
-            😄 Çok kolaydı
+            Çok kolaydı
           </button>
         </div>
       )}
@@ -369,11 +376,11 @@ function McqView({
     <div className="space-y-6">
       <StatusBadges stage={stage} status={status} />
 
-      <div className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-8 text-center space-y-3">
-        <p className="text-xs uppercase tracking-widest text-slate-400 dark:text-slate-500 font-medium">
-          {promptText}
-        </p>
-        <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100">{promptHeading}</h2>
+      <div className="rounded-3xl bg-white px-6 py-10 text-center dark:bg-slate-900">
+        <p className="text-sm text-slate-400">{promptText}</p>
+        <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-4xl">
+          {promptHeading}
+        </h2>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl mx-auto">
@@ -384,7 +391,7 @@ function McqView({
           let classes =
             "rounded-xl border px-4 py-3 text-left font-medium transition-colors ";
           if (!answered) {
-            classes += "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-indigo-400 hover:bg-indigo-50 dark:bg-indigo-950";
+            classes += "min-h-14 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-base font-medium dark:border-slate-700 dark:bg-slate-900";
           } else if (isCorrect) {
             classes += "border-green-400 bg-green-50 dark:bg-green-950 text-green-700";
           } else if (isSelected && !isCorrect) {

@@ -3,6 +3,7 @@ import { fetchAllFlashcards, STATS_COLUMNS } from "@/lib/loadCards";
 import { buildDailyPackage } from "@/lib/studyEngine";
 import { computeStreaks } from "@/lib/dailyActivity";
 import MotiveLine from "@/components/MotiveLine";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -76,106 +77,73 @@ export default async function HomePage() {
   const newProgress = Math.min(100, Math.round((todayNewWords / Math.max(1, dailyNewGoal)) * 100));
 
   return (
-    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center px-6 pb-8 pt-14">
-      <MotiveLine />
+    <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col px-5 pb-4 pt-8">
+      <p className="text-sm font-semibold text-indigo-600">Bugün</p>
+      <h1 className="mt-1 text-[2rem] font-semibold leading-tight tracking-tight text-slate-900 dark:text-slate-50">
+        Bugün çalışmaya hazırsın.
+      </h1>
+      <p className="mt-2 text-base text-slate-500 dark:text-slate-400">
+        {pkg.totalCount > 0
+          ? `${pkg.totalCount} kelime seni bekliyor.`
+          : "Bugünkü paket boş. Yeni kelime ekleyebilirsin."}
+      </p>
 
-      <div className="max-w-2xl w-full text-center space-y-4 mt-10">
-        <h1 className="text-4xl font-extrabold text-slate-900 dark:text-slate-50">
-          📚 Flashcard <span className="text-indigo-600">Anki Klonu</span>
-        </h1>
-        <p className="text-slate-500 dark:text-slate-400">
-          Fotoğraftan Fransızca kelime çıkar, SM-2 tabanlı adaptif öğrenme motoruyla kalıcı öğren.
+      <Link
+        href="/study/learn"
+        className="mt-6 flex h-14 items-center justify-center rounded-2xl bg-indigo-600 text-base font-semibold text-white"
+      >
+        Bugünün çalışmasına başla
+      </Link>
+
+      <div className="mt-8">
+        <div className="mb-2 flex items-center justify-between text-sm">
+          <span className="text-slate-500">Günlük tekrar</span>
+          <span className="font-medium text-slate-700 dark:text-slate-200">
+            {todayReviews}/{dailyReviewGoal}
+          </span>
+        </div>
+        <div className="h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+          <div className="h-full bg-indigo-600" style={{ width: `${reviewProgress}%` }} />
+        </div>
+        <div className="mb-2 mt-4 flex items-center justify-between text-sm">
+          <span className="text-slate-500">Yeni kelime</span>
+          <span className="font-medium text-slate-700 dark:text-slate-200">
+            {todayNewWords}/{dailyNewGoal}
+          </span>
+        </div>
+        <div className="h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+          <div className="h-full bg-emerald-500" style={{ width: `${newProgress}%` }} />
+        </div>
+      </div>
+
+      <dl className="mt-8 grid grid-cols-2 gap-x-6 gap-y-5">
+        <Stat label="Tekrar" value={pkg.dueCards.length} />
+        <Stat label="Yeni" value={pkg.newCards.length} />
+        <Stat label="Seri" value={`${streaks.current}`} hint={`en uzun ${streaks.longest}`} />
+        <Stat label="Hatırlama" value={successRate !== null ? `%${successRate}` : "—"} />
+        <Stat label="Kelime" value={total} />
+        <Stat label="Uzun süreli" value={longTermCount} />
+      </dl>
+
+      {(pkg.overdueCards.length > 0 || pkg.weakCards.length > 0) && (
+        <p className="mt-6 text-sm text-slate-500">
+          {pkg.overdueCards.length} gecikmiş, {pkg.weakCards.length} zayıf kelime de bugünkü pakette.
         </p>
-      </div>
+      )}
 
-      {/* Streak */}
-      <div className="flex items-center gap-6 mt-8">
-        <div className="text-center">
-          <p className="text-3xl font-extrabold text-orange-500">🔥 {streaks.current}</p>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Güncel seri (gün)</p>
-        </div>
-        <div className="w-px h-10 bg-slate-200 dark:bg-slate-700" />
-        <div className="text-center">
-          <p className="text-3xl font-extrabold text-slate-400 dark:text-slate-500">🏆 {streaks.longest}</p>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">En uzun seri</p>
-        </div>
-      </div>
-
-      {/* Günlük hedef ilerlemesi */}
-      <div className="grid grid-cols-2 gap-4 mt-6 max-w-md w-full">
-        <GoalBar label="Tekrar" done={todayReviews} goal={dailyReviewGoal} progress={reviewProgress} color="bg-indigo-500" />
-        <GoalBar label="Yeni Kelime" done={todayNewWords} goal={dailyNewGoal} progress={newProgress} color="bg-emerald-500" />
-      </div>
-
-      {/* BUGÜN paketi */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-8 max-w-2xl w-full">
-        <StatBox label="Gecikmiş" value={pkg.overdueCards.length} accent="text-red-600" />
-        <StatBox label="Zayıf Kelime" value={pkg.weakCards.length} accent="text-orange-600" />
-        <StatBox label="Tekrar" value={pkg.dueCards.length} accent="text-amber-600" />
-        <StatBox label="Yeni" value={pkg.newCards.length} accent="text-indigo-600" />
-      </div>
-
-      <div className="grid sm:grid-cols-3 gap-4 mt-4 max-w-2xl w-full">
-        <div className="rounded-2xl bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 p-6 text-center">
-          <p className="text-sm text-slate-400 dark:text-slate-500">📚 Toplam Kelime</p>
-          <p className="text-3xl font-bold text-slate-800 dark:text-slate-100 mt-1">{total}</p>
-        </div>
-        <div className="rounded-2xl bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 p-6 text-center">
-          <p className="text-sm text-slate-400 dark:text-slate-500">📈 Başarı Oranı</p>
-          <p className="text-3xl font-bold text-slate-800 dark:text-slate-100 mt-1">
-            {successRate !== null ? `%${successRate}` : "—"}
-          </p>
-        </div>
-        <div className="rounded-2xl bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 p-6 text-center">
-          <p className="text-sm text-slate-400 dark:text-slate-500">🧠 Uzun Süreli Hafıza</p>
-          <p className="text-3xl font-bold text-slate-800 dark:text-slate-100 mt-1">{longTermCount}</p>
-        </div>
+      <div className="mt-8">
+        <MotiveLine />
       </div>
     </main>
   );
 }
 
-function StatBox({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: number;
-  accent: string;
-}) {
+function Stat({ label, value, hint }: { label: string; value: number | string; hint?: string }) {
   return (
-    <div className="rounded-2xl bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 p-4 text-center">
-      <p className={`text-2xl font-bold ${accent}`}>{value}</p>
-      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{label}</p>
-    </div>
-  );
-}
-
-function GoalBar({
-  label,
-  done,
-  goal,
-  progress,
-  color,
-}: {
-  label: string;
-  done: number;
-  goal: number;
-  progress: number;
-  color: string;
-}) {
-  return (
-    <div className="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3">
-      <div className="flex items-center justify-between text-xs mb-1.5">
-        <span className="text-slate-500 dark:text-slate-400">{label}</span>
-        <span className="text-slate-400 dark:text-slate-500">
-          {done}/{goal}
-        </span>
-      </div>
-      <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
-        <div className={`h-full ${color} transition-all`} style={{ width: `${progress}%` }} />
-      </div>
+    <div>
+      <dt className="text-sm text-slate-500">{label}</dt>
+      <dd className="mt-0.5 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">{value}</dd>
+      {hint && <p className="text-xs text-slate-400">{hint}</p>}
     </div>
   );
 }

@@ -11,39 +11,32 @@ interface FlashCardViewProps {
 
 export default function FlashCardView({ card, isFlipped, onFlip }: FlashCardViewProps) {
   return (
-    <div className="[perspective:1500px] w-full max-w-xl mx-auto h-80 select-none">
+    <div className="mx-auto h-[22rem] w-full max-w-xl select-none [perspective:1500px] sm:h-96">
       <div
         onClick={onFlip}
-        className={`relative w-full h-full cursor-pointer transition-transform duration-500 [transform-style:preserve-3d] ${
+        className={`relative h-full w-full cursor-pointer transition-transform duration-500 [transform-style:preserve-3d] ${
           isFlipped ? "[transform:rotateY(180deg)]" : ""
         }`}
       >
-        {/* ÖN YÜZ: Kelime + Preposition */}
-        <div className="absolute inset-0 [backface-visibility:hidden] flex flex-col items-center justify-center gap-3 rounded-2xl bg-white dark:bg-slate-800 shadow-xl border border-slate-200 dark:border-slate-700 p-8">
-          <span className="text-xs uppercase tracking-widest text-slate-400 dark:text-slate-500 font-medium">
-            Kelime
-          </span>
-          <div className="flex items-center gap-3">
-            <h2 className="text-4xl font-bold text-slate-800 dark:text-slate-100 text-center">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm [backface-visibility:hidden] dark:border-slate-700 dark:bg-slate-900">
+          <div className="flex items-start gap-3">
+            <h2 className="text-center text-4xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-5xl">
               {card.word}
-              {card.preposition && (
-                <span className="text-indigo-500"> {card.preposition}</span>
-              )}
             </h2>
             <SpeakButton text={card.word} />
           </div>
-          <p className="text-sm text-slate-400 dark:text-slate-500 mt-4">Cevabı görmek için karta tıkla</p>
+          {card.preposition && (
+            <p className="text-lg font-medium text-indigo-600">{card.preposition}</p>
+          )}
+          <p className="mt-2 text-sm text-slate-400">Cevabı görmek için dokun</p>
         </div>
 
-        {/* ARKA YÜZ: Anlam + Örnek Cümle */}
-        <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] flex flex-col items-center justify-center gap-4 rounded-2xl bg-indigo-600 shadow-xl p-8 text-center">
-          <span className="text-xs uppercase tracking-widest text-indigo-200 font-medium">
-            Anlam
-          </span>
-          <h3 className="text-3xl font-bold text-white">{card.meaning}</h3>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm [backface-visibility:hidden] [transform:rotateY(180deg)] dark:border-slate-700 dark:bg-slate-900">
+          <p className="text-sm text-slate-400">Türkçe</p>
+          <h3 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">{card.meaning}</h3>
           {card.example_sentence && (
-            <p className="text-indigo-100 italic mt-2 text-lg">
-              &ldquo;{card.example_sentence}&rdquo;
+            <p className="mt-2 text-lg leading-relaxed text-slate-600 dark:text-slate-300">
+              {card.example_sentence}
             </p>
           )}
         </div>

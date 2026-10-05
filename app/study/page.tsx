@@ -25,14 +25,9 @@ export default async function StudyModeSelectPage() {
   const { totalCount, cardCount, newCount, synonymGroups } = await getPackageSize();
 
   return (
-    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 px-6 py-12">
-      <div className="max-w-2xl mx-auto space-y-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">🧠 Çalışma Modu Seç</h1>
-          <Link href="/" className="text-sm text-indigo-600 hover:underline">
-            ← Ana sayfaya dön
-          </Link>
-        </div>
+    <main className="min-h-screen px-5 py-8">
+      <div className="mx-auto max-w-lg space-y-6">
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">Çalış</h1>
 
         <div className="space-y-4">
           <ModeCard
@@ -102,7 +97,9 @@ function ModeCard({
   return (
     <Link
       href={href}
-      className="block rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-6 hover:border-indigo-400 hover:shadow-md transition-all"
+      className={`block rounded-2xl border bg-white p-5 dark:bg-slate-900 ${
+        recommended ? "border-indigo-300" : "border-slate-200 dark:border-slate-800"
+      }`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4">

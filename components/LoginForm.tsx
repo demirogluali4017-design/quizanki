@@ -36,13 +36,12 @@ export default function LoginForm() {
   return (
     <form
       onSubmit={onSubmit}
-      className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+      className="w-full max-w-sm"
     >
-      <p className="text-xs uppercase tracking-[0.18em] text-indigo-700 dark:text-indigo-300">Flashcard</p>
-      <h1 className="mt-2 text-3xl text-slate-900 dark:text-slate-50">Giriş</h1>
-      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-        Kelimeler sadece hesaba giriş yapılınca açılır.
-      </p>
+      <p className="text-sm font-semibold text-indigo-600">Quizanki</p>
+      <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+        Fransızca kelimeleri gerçekten hatırla.
+      </h1>
 
       <label className="mt-6 block text-sm text-slate-600 dark:text-slate-300" htmlFor="email">
         E-posta
@@ -75,7 +74,7 @@ export default function LoginForm() {
       <button
         type="submit"
         disabled={loading}
-        className="mt-6 h-11 w-full rounded-full bg-indigo-700 text-sm font-medium text-white transition-colors hover:bg-indigo-800 disabled:opacity-60"
+        className="mt-6 h-12 w-full rounded-2xl bg-indigo-600 text-base font-semibold text-white disabled:opacity-60"
       >
         {loading ? "Giriliyor…" : "Giriş yap"}
       </button>

@@ -1,26 +1,26 @@
 import type { Metadata } from "next";
-import { Fraunces, Manrope } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/ThemeProvider";
 import FloatingControls from "@/components/FloatingControls";
 import VisitBeacon from "@/components/VisitBeacon";
 import BottomNav from "@/components/BottomNav";
 
-const sans = Manrope({
+const sans = Plus_Jakarta_Sans({
   subsets: ["latin", "latin-ext"],
   variable: "--font-sans",
   display: "swap",
 });
 
-const display = Fraunces({
+const display = Plus_Jakarta_Sans({
   subsets: ["latin", "latin-ext"],
   variable: "--font-display",
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Flashcard | Anki Klonu",
-  description: "Fotoğraftan kelime çıkaran, SM-2 aralıklı tekrar destekli flashcard uygulaması",
+  title: "Quizanki",
+  description: "Fransızca kelimeleri aralıklı tekrar ile hatırla.",
 };
 
 const themeInitScript = `
