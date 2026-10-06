@@ -39,6 +39,13 @@ export default async function StudyModeSelectPage() {
             badge={totalCount > 0 ? `${totalCount} kelime hazır` : "Bugün için paket boş"}
           />
           <ModeCard
+            href="/read"
+            emoji="📰"
+            title="Okuma"
+            description="YDS konularında beş parça. Fiil boyalı, bağlaç ve gönderim açılır. Parça bitince dört soru."
+            badge="5 parça"
+          />
+          <ModeCard
             href="/study/new"
             emoji="🌱"
             title="Sıfırdan Öğren"

@@ -104,6 +104,12 @@ async function Dashboard() {
         >
           Bugünün çalışmasına başla
         </Link>
+        <Link
+          href="/read"
+          className="mt-3 flex h-12 items-center justify-center rounded-2xl bg-white/15 text-sm font-semibold text-white"
+        >
+          Bugünün beş okuma parçası
+        </Link>
         <QuoteFlow />
       </div>
 
