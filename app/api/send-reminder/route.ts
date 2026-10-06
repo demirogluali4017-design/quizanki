@@ -3,6 +3,7 @@ import { createServiceRoleClient } from "@/lib/supabase";
 import { buildDailyPackage } from "@/lib/studyEngine";
 import { requireUser } from "@/lib/require-user";
 import { Flashcard } from "@/types";
+import { refreshDailyReadings } from "@/lib/refreshReadings";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -50,6 +51,14 @@ export async function GET(request: NextRequest) {
   }
 
   const slot = request.nextUrl.searchParams.get("when") === "evening" ? "evening" : "noon";
+
+  if (slot === "noon") {
+    try {
+      await refreshDailyReadings();
+    } catch (err) {
+      console.error("Okuma parçaları yenilenemedi:", err);
+    }
+  }
 
   try {
     const supabaseAdmin = createServiceRoleClient();
