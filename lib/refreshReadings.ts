@@ -1,27 +1,10 @@
 import { createServiceRoleClient } from "@/lib/supabase";
+import { formatWithGemini } from "@/lib/geminiReading";
 
 const FEEDS = [
   "https://www.france24.com/fr/rss",
   "https://www.lemonde.fr/sciences/rss_full.xml",
 ];
-
-const PROMPT = `Sana yalnızca bir haber başlığı verilecek. O konudan 180-280 kelimelik özgün bir Fransızca YDS parçası yaz.
-Kaynak cümlesini kopyalama, alıntı yapma, paragrafı yeniden kurma. Yeni sahte istatistik uydurma.
-İşaretler: fiil [[v:fondent|présent]], sıfat [[a:ancien]], bağlaç [[c:cependant]], gönderim [[r:elle]]. Zaman adı présent, imparfait, passé composé, plus-que-parfait, futur, conditionnel veya subjonctif olsun.
-Dört soru ve şıklar Fransızca, YDS kalıbında: idée principale, détail, vocabulaire en contexte, inférence. answer 0-3. why Fransızca. summaryTr yine Türkçe kalsın.
-Yanıt yalnızca JSON:
-{"topic":"","title":"","minutes":4,"sourceNote":"Konudan yeniden yazıldı","paragraphs":[""],"summaryTr":"","questions":[{"kind":"Idée principale","prompt":"","options":["","","",""],"answer":0,"why":""}]}`;
-
-function collectApiKeys(): string[] {
-  const keys: string[] = [];
-  if (process.env.GEMINI_API_KEY) keys.push(process.env.GEMINI_API_KEY);
-  let i = 2;
-  while (process.env[`GEMINI_API_KEY_${i}`]) {
-    keys.push(process.env[`GEMINI_API_KEY_${i}`] as string);
-    i += 1;
-  }
-  return keys;
-}
 
 function decode(value: string) {
   return value
@@ -57,46 +40,6 @@ async function fetchTopics() {
   return topics.slice(0, 5);
 }
 
-async function writePassage(title: string) {
-  const keys = collectApiKeys();
-  let lastError = "Gemini yanıt vermedi.";
-  for (const key of keys) {
-    for (const model of ["gemini-3.5-flash-lite", "gemini-3.8-flash"]) {
-      try {
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-            body: JSON.stringify({
-              contents: [{ role: "user", parts: [{ text: `${PROMPT}\n\nBAŞLIK:\n${title}` }] }],
-              generationConfig: { temperature: 0.4, responseMimeType: "application/json" },
-            }),
-          }
-        );
-        const data = (await response.json()) as {
-          error?: { message?: string };
-          candidates?: { content?: { parts?: { text?: string }[] } }[];
-        };
-        if (!response.ok) throw new Error(data.error?.message || `Gemini ${response.status}`);
-        const raw = (data.candidates?.[0]?.content?.parts ?? []).map((part) => part.text ?? "").join("");
-        return JSON.parse(raw.replace(/^```json\s*|```$/g, "")) as {
-          topic?: string;
-          title?: string;
-          minutes?: number;
-          sourceNote?: string;
-          paragraphs?: string[];
-          summaryTr?: string;
-          questions?: unknown[];
-        };
-      } catch (err) {
-        lastError = err instanceof Error ? err.message : lastError;
-      }
-    }
-  }
-  throw new Error(lastError);
-}
-
 function copiesTitle(passage: string, title: string) {
   const words = title
     .toLocaleLowerCase("fr")
@@ -122,7 +65,7 @@ export async function refreshDailyReadings() {
 
   let created = 0;
   for (const topic of topics) {
-    const passage = await writePassage(topic.title);
+    const passage = await formatWithGemini(`Başlık: ${topic.title}. Bu konudan özgün parça yaz.`);
     const plain = (passage.paragraphs ?? []).join(" ").replace(/\[\[(?:v|c|r):([^\]]+)\]\]/g, "$1");
     if (!passage.paragraphs?.length || copiesTitle(plain, topic.title)) continue;
     const { error } = await supabase.from("readings").insert({
