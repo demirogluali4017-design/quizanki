@@ -124,7 +124,7 @@ export default function ReadingView({ passage }: { passage: ReadingPassage }) {
           <p className="text-sm text-slate-500">
             Kaynak:{" "}
             <a href={passage.sourceUrl} className="font-medium text-indigo-600 underline" target="_blank" rel="noreferrer">
-              {passage.sourceTitle || passage.sourceUrl}
+              {passage.sourceUrl}
             </a>
           </p>
         )}

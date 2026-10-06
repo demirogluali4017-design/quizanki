@@ -34,7 +34,7 @@ export const READINGS: ReadingPassage[] = [
     minutes: 4,
     sourceNote: "Konu kaynağı",
     sourceTitle: "Le Monde Sciences",
-    sourceUrl: "https://www.lemonde.fr/sciences/",
+    sourceUrl: "https://www.lemonde.fr/sciences/article/2026/10/06/le-prix-nobel-de-physique-2026-est-decerne-au-belge-francis-halzen-pour-ses-travaux-sur-les-neutrinos_6788974_1650684.htmlarticle/2026/10/06/un-voilier-robotise-bioinspire-qui-tombe-du-ciel_6788979_1650684.html",
     paragraphs: [
       "Dans plusieurs vallées alpines, les glaciers [[v:perdent]] chaque année une couche de glace visible à l'œil nu. [[c:Cependant]], le phénomène ne [[v:se limite]] pas au paysage. Lorsque la glace [[v:fond]], [[r:elle]] [[v:libère]] une eau froide qui [[v:modifie]] le débit des rivières en été.",
       "[[c:Ainsi]], des villages qui [[v:comptaient]] autrefois sur une fonte lente [[v:se retrouvent]] avec trop d'eau au printemps et trop peu en août. [[c:Pourtant]], la même eau [[v:sert]] à l'irrigation, aux barrages et à la consommation. [[r:Ce déséquilibre]] [[v:oblige]] les communes à revoir le calendrier agricole.",
@@ -151,7 +151,7 @@ export const READINGS: ReadingPassage[] = [
     minutes: 4,
     sourceNote: "Konu kaynağı",
     sourceTitle: "France 24",
-    sourceUrl: "https://www.france24.com/fr/",
+    sourceUrl: "https://www.lemonde.fr/sciences/article/2026/10/06/le-prix-nobel-de-physique-2026-est-decerne-au-belge-francis-halzen-pour-ses-travaux-sur-les-neutrinos_6788974_1650684.html",
     paragraphs: [
       "Avant les presses à caractères mobiles, copier un ouvrage [[v:demandait]] des mois. [[c:Aussi]] le livre [[v:restait]]-il rare, cher et souvent enfermé dans une bibliothèque religieuse. L'imprimerie du XVe siècle ne [[v:crée]] pas la lecture, [[c:mais]] [[r:elle]] [[v:change]] son échelle.",
       "Un texte [[v:pouvait]] désormais circuler dans plusieurs villes avant que les erreurs de la première édition [[v:soient]] corrigées. [[c:Par conséquent]], les débats savants [[v:s'accélèrent]]. [[c:Néanmoins]], cette vitesse [[v:apporte]] aussi des textes inexacts, car tout atelier ne [[v:disposait]] pas d'un correcteur compétent.",
@@ -207,7 +207,7 @@ export const READINGS: ReadingPassage[] = [
     minutes: 4,
     sourceNote: "Konu kaynağı",
     sourceTitle: "France 24 Éco-Tech",
-    sourceUrl: "https://www.france24.com/fr/eco-tech/",
+    sourceUrl: "https://www.lemonde.fr/economie/article/2026/10/06/notourisme-de-la-montgolfiere-a-l-escape-game-le-vignoble-francais-multiplie-les-experiences_6788978_3234.html",
     paragraphs: [
       "Lorsque des entreprises [[v:ont autorisé]] le travail à distance, beaucoup [[v:ont cru]] que les employés [[v:produiraient]] davantage. Le trajet [[v:disparaissait]], [[c:donc]] la journée [[v:semblait]] plus longue. Les mesures [[v:racontent]] une histoire moins simple.",
       "Les tâches qui [[v:exigent]] une concentration individuelle [[v:progressent]] souvent. [[c:En revanche]], les décisions qui [[v:demandent]] un désaccord rapide [[v:ralentissent]]. Un message [[v:attend]] une réponse, [[c:alors qu']]une réunion courte [[v:aurait]] tranché le même point.",
@@ -268,7 +268,7 @@ export const READINGS: ReadingPassage[] = [
     minutes: 4,
     sourceNote: "Konu kaynağı",
     sourceTitle: "Le Monde Éducation",
-    sourceUrl: "https://www.lemonde.fr/education/",
+    sourceUrl: "https://www.lemonde.fr/idees/article/2026/10/06/pisa-pour-reussir-le-test-savoir-inventer-la-fin-d-une-piece-de-theatre-est-plus-important-que-connaitre-l-uvre-de-racine_6788941_3232.html",
     paragraphs: [
       "Beaucoup d'apprenants [[v:traduisent]] chaque phrase avant de comprendre le paragraphe. [[r:Cette habitude]] [[v:rassure]], [[c:mais]] [[r:elle]] [[v:ralentit]] la lecture et [[v:cache]] les liens entre les idées. Un texte d'examen [[v:demande]] d'abord une carte grossière, pas un dictionnaire complet.",
       "[[c:D'abord]], le lecteur [[v:repère]] qui [[v:fait]] quoi. Ensuite, il [[v:cherche]] les tournants : [[c:cependant]], [[c:donc]], [[c:en revanche]]. [[r:Ces mots]] [[v:annoncent]] souvent la phrase qui [[v:porte]] la question. [[c:Enfin]], il [[v:revient]] au mot inconnu seulement si [[r:celui-ci]] [[v:bloque]] le sens.",
