@@ -1,7 +1,7 @@
 export type MarkKind = "v" | "c" | "r";
 
 export type ReadingQuestion = {
-  kind: "Idée principale" | "Detay" | "Kelime" | "Çıkarım";
+  kind: "Idée principale" | "Détail" | "Vocabulaire" | "Inférence";
   prompt: string;
   options: string[];
   answer: number;
