@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const parsed = await formatWithGemini(text);
+    const parsed = await formatWithGemini(`Metni değiştirme, kısaltma, yeniden yazma. Cümleler yapıştırıldığı gibi kalsın. Yalnızca fiil zamanı, sıfat ve bağlaç işaretle. Sorular ve şıklar Fransızca olsun.\n\n${text}`);
     return NextResponse.json({
       passage: {
         id: `draft-${Date.now()}`,
