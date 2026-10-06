@@ -15,6 +15,8 @@ export default async function DailyReadingPage({ params }: { params: { id: strin
     title: data.title,
     minutes: data.minutes ?? 4,
     sourceNote: data.source_note || "Konudan yeniden yazıldı",
+    sourceUrl: data.source_url || undefined,
+    sourceTitle: data.source_title || undefined,
     paragraphs: data.paragraphs ?? [],
     summaryTr: data.summary_tr || "",
     questions: data.questions ?? [],

@@ -126,7 +126,7 @@ export default function ReadingView({ passage }: { passage: ReadingPassage }) {
               {selectedKind === "v" ? "Fiil" : selectedKind === "a" ? "Sıfat" : selectedKind === "c" ? "Bağlaç" : "Kelime"}
             </p>
             <p className="text-lg font-semibold">{selectedWord}</p>
-            {selectedTense && <p className="text-sm font-medium text-indigo-600">Zaman: {selectedTense}</p>}
+            <p className="text-sm font-medium text-indigo-600">Zaman: {selectedTense || "belirtilmedi"}</p>
             <input
               value={meaning}
               onChange={(event) => setMeaning(event.target.value)}
@@ -198,6 +198,14 @@ export default function ReadingView({ passage }: { passage: ReadingPassage }) {
           {showSummary && <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">{passage.summaryTr}</p>}
         </section>
 
+        {passage.sourceUrl && (
+          <p className="text-sm text-slate-500">
+            Kaynak:{" "}
+            <a href={passage.sourceUrl} className="font-medium text-indigo-600 underline" target="_blank" rel="noreferrer">
+              {passage.sourceTitle || passage.sourceUrl}
+            </a>
+          </p>
+        )}
         <Link href="/read" className="block text-center text-sm font-medium text-indigo-600">
           Diğer parçalara dön
         </Link>
@@ -225,11 +233,12 @@ function MarkedText({
         }
         const kind = marked[1] as Layer;
         const [word, tense = ""] = marked[2].split("|");
+        const shownTense = kind === "v" ? tense || inferTense(word) : tense;
         const active = layers[kind];
         return (
           <button
             key={index}
-            onClick={() => onWord(word, tense, kind)}
+            onClick={() => onWord(word, shownTense, kind)}
             className={
               active
                 ? kind === "v"
@@ -265,4 +274,13 @@ function PlainWords({ text, onWord }: { text: string; onWord: (word: string, ten
       )}
     </>
   );
+}
+
+function inferTense(word: string) {
+  const value = word.toLocaleLowerCase("fr");
+  if (value.includes("été") || value.startsWith("a ") || value.startsWith("ont ")) return "passé composé";
+  if (/(aient|ait|ions|iez)$/.test(value)) return "imparfait";
+  if (/(rait|raient)$/.test(value)) return "conditionnel";
+  if (/(era|eras|eront|ira|iront)$/.test(value)) return "futur";
+  return "présent";
 }
