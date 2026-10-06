@@ -120,6 +120,15 @@ export default function ReadingView({ passage }: { passage: ReadingPassage }) {
           ))}
         </article>
 
+                {passage.sourceUrl && (
+          <p className="text-sm text-slate-500">
+            Kaynak:{" "}
+            <a href={passage.sourceUrl} className="font-medium text-indigo-600 underline" target="_blank" rel="noreferrer">
+              {passage.sourceTitle || passage.sourceUrl}
+            </a>
+          </p>
+        )}
+
         {selectedWord && (
           <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
             <p className="text-sm text-slate-500">
@@ -198,14 +207,6 @@ export default function ReadingView({ passage }: { passage: ReadingPassage }) {
           {showSummary && <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">{passage.summaryTr}</p>}
         </section>
 
-        {passage.sourceUrl && (
-          <p className="text-sm text-slate-500">
-            Kaynak:{" "}
-            <a href={passage.sourceUrl} className="font-medium text-indigo-600 underline" target="_blank" rel="noreferrer">
-              {passage.sourceTitle || passage.sourceUrl}
-            </a>
-          </p>
-        )}
         <Link href="/read" className="block text-center text-sm font-medium text-indigo-600">
           Diğer parçalara dön
         </Link>
