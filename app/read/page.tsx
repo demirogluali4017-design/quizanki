@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ReadingComposer from "@/components/ReadingComposer";
 import { READINGS } from "@/lib/readings";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,7 @@ export default function ReadIndexPage() {
             Fiiller boyalı gelir. Bağlaç ve gönderim ayrıca açılır. Çeviri sorudan sonradır.
           </p>
         </header>
+        <ReadingComposer />
         <div className="space-y-3">
           {READINGS.map((passage, index) => (
             <Link
