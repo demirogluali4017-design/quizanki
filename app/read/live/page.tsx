@@ -2,9 +2,21 @@ import Link from "next/link";
 import ReadingView from "@/components/ReadingView";
 import { findLiveArticle } from "@/lib/liveArticles";
 import { formatWithGemini } from "@/lib/geminiReading";
-import { ReadingPassage } from "@/lib/readings";
+import { ReadingPassage, ReadingQuestion } from "@/lib/readings";
 
 export const dynamic = "force-dynamic";
+
+const KINDS = ["Idée principale", "Détail", "Vocabulaire", "Inférence"] as const;
+
+function asQuestions(value: { kind: string; prompt: string; options: string[]; answer: number; why: string }[] | undefined): ReadingQuestion[] {
+  return (value ?? []).slice(0, 4).map((question, index) => ({
+    kind: KINDS.includes(question.kind as (typeof KINDS)[number]) ? question.kind as ReadingQuestion["kind"] : KINDS[index],
+    prompt: question.prompt,
+    options: question.options,
+    answer: question.answer,
+    why: question.why,
+  }));
+}
 
 export default async function LiveReadingPage({ searchParams }: { searchParams: { url?: string } }) {
   const url = searchParams.url ?? "";
@@ -41,7 +53,7 @@ export default async function LiveReadingPage({ searchParams }: { searchParams: 
       title: article.title,
       paragraphs: formatted.paragraphs?.length ? formatted.paragraphs : passage.paragraphs,
       summaryTr: formatted.summaryTr || "",
-      questions: formatted.questions?.slice(0, 4) ?? [],
+      questions: asQuestions(formatted.questions),
     };
   } catch {
     passage.summaryTr = "İşaretleme şu an kurulamadı. Metin kaynağın kendi özetidir.";
