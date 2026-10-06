@@ -1,4 +1,3 @@
--- Günlük okuma parçaları. Kaynak metin saklanmaz, yalnız başlık ve adres durur.
 create table if not exists public.readings (
   id uuid primary key default gen_random_uuid(),
   created_on date not null,
