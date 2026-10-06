@@ -11,17 +11,18 @@ const PROMPT = `Sana Fransızca bir metin verilecek. Bunu Quizanki okuma format�
 Metni kısaltabilirsin ama yeni olay uydurma. 180-320 kelime kalsın. YDS parçası gibi akademik ve tarafsız olsun.
 
 İşaretleri metnin içine göm:
-- Fiil ve fiil grupları: [[v:fondent]]
+- Fiil: [[v:fondent|présent]] zaman Fransızca adıyla (présent, passé composé, imparfait, plus-que-parfait, futur, conditionnel, subjonctif)
+- Sıfat: [[a:ancien]]
 - Bağlaç ve geçiş: [[c:cependant]]
-- Gönderim (il, elle, ce, cette, celui-ci, là): [[r:elle]]
+- Gönderim: [[r:elle]]
 İşaretsiz kelimeyi de metinde bırak. Her paragraf ayrı string olsun.
 
-Dört soru üret, şıklar Türkçe olsun:
-1. Ana fikir
-2. Detay (metinde açık yazan)
-3. Kelime (bağlamdaki anlam)
-4. Çıkarım (metinde birebir cümle olmayan sonuç)
-answer 0-3 arası doğru şık indexi. why kısa Türkçe gerekçe.
+Dört soru ve şıklar Fransızca olsun, YDS okuma kalıbında:
+1. idée principale
+2. détail explicite
+3. vocabulaire en contexte
+4. inférence, ce n'est pas une phrase copiée
+answer 0-3. why kısa Fransızca gerekçe. kind alanları: Idée principale, Détail, Vocabulaire, Inférence.
 
 summaryTr: parçanın Türkçe özeti, 3-4 cümle.
 topic: Çevre, Sağlık, Tarih, Ekonomi veya Eğitim.

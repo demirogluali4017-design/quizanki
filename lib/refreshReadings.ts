@@ -7,10 +7,10 @@ const FEEDS = [
 
 const PROMPT = `Sana yalnızca bir haber başlığı verilecek. O konudan 180-280 kelimelik özgün bir Fransızca YDS parçası yaz.
 Kaynak cümlesini kopyalama, alıntı yapma, paragrafı yeniden kurma. Yeni sahte istatistik uydurma.
-İşaretler: fiil [[v:...]], bağlaç [[c:...]], gönderim [[r:...]].
-Dört Türkçe soru: Ana fikir, Detay, Kelime, Çıkarım. answer 0-3. summaryTr 3 cümle.
+İşaretler: fiil [[v:fondent|présent]], sıfat [[a:ancien]], bağlaç [[c:cependant]], gönderim [[r:elle]]. Zaman adı présent, imparfait, passé composé, plus-que-parfait, futur, conditionnel veya subjonctif olsun.
+Dört soru ve şıklar Fransızca, YDS kalıbında: idée principale, détail, vocabulaire en contexte, inférence. answer 0-3. why Fransızca. summaryTr yine Türkçe kalsın.
 Yanıt yalnızca JSON:
-{"topic":"","title":"","minutes":4,"sourceNote":"Konudan yeniden yazıldı","paragraphs":[""],"summaryTr":"","questions":[{"kind":"Ana fikir","prompt":"","options":["","","",""],"answer":0,"why":""}]}`;
+{"topic":"","title":"","minutes":4,"sourceNote":"Konudan yeniden yazıldı","paragraphs":[""],"summaryTr":"","questions":[{"kind":"Idée principale","prompt":"","options":["","","",""],"answer":0,"why":""}]}`;
 
 function collectApiKeys(): string[] {
   const keys: string[] = [];

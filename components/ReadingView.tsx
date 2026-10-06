@@ -6,21 +6,24 @@ import { useRouter } from "next/navigation";
 import { invalidateCardCache } from "@/lib/cardCache";
 import { ReadingPassage } from "@/lib/readings";
 
-type Layer = "v" | "c" | "r";
+type Layer = "v" | "a" | "c" | "r";
 
 const LAYER_LABEL: Record<Layer, string> = {
   v: "Fiil",
+  a: "Sıfat",
   c: "Bağlaç",
   r: "Gönderim",
 };
 
 export default function ReadingView({ passage }: { passage: ReadingPassage }) {
   const router = useRouter();
-  const [layers, setLayers] = useState<Record<Layer, boolean>>({ v: true, c: false, r: false });
+  const [layers, setLayers] = useState<Record<Layer, boolean>>({ v: true, a: false, c: false, r: false });
   const [picked, setPicked] = useState<Record<number, number>>({});
   const [checked, setChecked] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [selectedWord, setSelectedWord] = useState("");
+  const [selectedTense, setSelectedTense] = useState("");
+  const [selectedKind, setSelectedKind] = useState<Layer | "">("");
   const [meaning, setMeaning] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveNote, setSaveNote] = useState<string | null>(null);
@@ -34,10 +37,12 @@ export default function ReadingView({ passage }: { passage: ReadingPassage }) {
     setLayers((current) => ({ ...current, [layer]: !current[layer] }));
   }
 
-  function chooseWord(raw: string) {
+  function chooseWord(raw: string, tense = "", kind: Layer | "" = "") {
     const word = raw.replace(/^[«"']+|[»"'.:,;!?]+$/g, "").trim();
     if (!word) return;
     setSelectedWord(word);
+    setSelectedTense(tense);
+    setSelectedKind(kind);
     setMeaning("");
     setSaveNote(null);
   }
@@ -94,7 +99,9 @@ export default function ReadingView({ passage }: { passage: ReadingPassage }) {
                 layers[layer]
                   ? layer === "v"
                     ? "bg-indigo-600 text-white"
-                    : layer === "c"
+                    : layer === "a"
+                      ? "bg-rose-500 text-white"
+                      : layer === "c"
                       ? "bg-amber-400 text-slate-900"
                       : "bg-emerald-600 text-white"
                   : "bg-slate-100 text-slate-500 dark:bg-slate-800"
@@ -115,8 +122,11 @@ export default function ReadingView({ passage }: { passage: ReadingPassage }) {
 
         {selectedWord && (
           <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-            <p className="text-sm text-slate-500">Karta eklenecek kelime</p>
+            <p className="text-sm text-slate-500">
+              {selectedKind === "v" ? "Fiil" : selectedKind === "a" ? "Sıfat" : selectedKind === "c" ? "Bağlaç" : "Kelime"}
+            </p>
             <p className="text-lg font-semibold">{selectedWord}</p>
+            {selectedTense && <p className="text-sm font-medium text-indigo-600">Zaman: {selectedTense}</p>}
             <input
               value={meaning}
               onChange={(event) => setMeaning(event.target.value)}
@@ -203,33 +213,36 @@ function MarkedText({
 }: {
   text: string;
   layers: Record<Layer, boolean>;
-  onWord: (word: string) => void;
+  onWord: (word: string, tense?: string, kind?: Layer) => void;
 }) {
-  const parts = text.split(/(\[\[(?:v|c|r):[^\]]+\]\])/g);
+  const parts = text.split(/(\[\[(?:v|a|c|r):[^\]]+\]\])/g);
   return (
     <>
       {parts.map((part, index) => {
-        const marked = part.match(/^\[\[(v|c|r):([^\]]+)\]\]$/);
+        const marked = part.match(/^\[\[(v|a|c|r):([^\]]+)\]\]$/);
         if (!marked) {
           return <PlainWords key={index} text={part} onWord={onWord} />;
         }
         const kind = marked[1] as Layer;
+        const [word, tense = ""] = marked[2].split("|");
         const active = layers[kind];
         return (
           <button
             key={index}
-            onClick={() => onWord(marked[2])}
+            onClick={() => onWord(word, tense, kind)}
             className={
               active
                 ? kind === "v"
                   ? "font-semibold text-indigo-700 underline decoration-indigo-300 dark:text-indigo-300"
-                  : kind === "c"
+                  : kind === "a"
+                    ? "rounded bg-rose-100 px-1 font-semibold text-rose-700"
+                    : kind === "c"
                     ? "rounded bg-amber-200 px-1 font-semibold text-amber-950"
                     : "font-semibold text-emerald-700 underline decoration-emerald-300 dark:text-emerald-300"
                 : "text-inherit"
             }
           >
-            {marked[2]}
+            {word}
           </button>
         );
       })}
@@ -237,7 +250,7 @@ function MarkedText({
   );
 }
 
-function PlainWords({ text, onWord }: { text: string; onWord: (word: string) => void }) {
+function PlainWords({ text, onWord }: { text: string; onWord: (word: string, tense?: string, kind?: Layer) => void }) {
   const bits = text.split(/(\s+)/);
   return (
     <>
