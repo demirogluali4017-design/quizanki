@@ -19,7 +19,7 @@ function decode(value: string) {
 }
 
 async function fetchTopics() {
-  const topics: { title: string; url: string }[] = [];
+  const topics: { title: string; url: string; excerpt: string }[] = [];
   for (const feed of FEEDS) {
     try {
       const response = await fetch(feed, { cache: "no-store" });
@@ -29,8 +29,9 @@ async function fetchTopics() {
       for (const item of items) {
         const title = decode((item.match(/<title>([\s\S]*?)<\/title>/i) ?? [])[1] ?? "");
         const url = decode((item.match(/<link>([\s\S]*?)<\/link>/i) ?? [])[1] ?? "");
-        if (title.length > 12 && !topics.some((topic) => topic.title === title)) {
-          topics.push({ title, url });
+        const excerpt = decode((item.match(/<description>([\s\S]*?)<\/description>/i) ?? [])[1] ?? "");
+        if (title.length > 12 && excerpt.length > 80 && !topics.some((topic) => topic.title === title)) {
+          topics.push({ title, url, excerpt });
         }
       }
     } catch {
@@ -38,6 +39,15 @@ async function fetchTopics() {
     }
   }
   return topics.slice(0, 5);
+}
+
+function sameDifficulty(plain: string, excerpt: string) {
+  const normalize = (value: string) => value.toLocaleLowerCase("fr").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  const left = normalize(plain).split(" ").filter((word) => word.length > 4);
+  const right = new Set(normalize(excerpt).split(" ").filter((word) => word.length > 4));
+  if (left.length < 12 || right.size < 12) return false;
+  const shared = left.filter((word) => right.has(word)).length;
+  return shared / left.length > 0.55;
 }
 
 function copiesTitle(passage: string, title: string) {
@@ -65,15 +75,15 @@ export async function refreshDailyReadings() {
 
   let created = 0;
   for (const topic of topics) {
-    const passage = await formatWithGemini(`Başlık: ${topic.title}. Bu konudan özgün parça yaz.`);
-    const plain = (passage.paragraphs ?? []).join(" ").replace(/\[\[(?:v|c|r):([^\]]+)\]\]/g, "$1");
-    if (!passage.paragraphs?.length || copiesTitle(plain, topic.title)) continue;
+    const passage = await formatWithGemini(`Metni sadeleştirme, kısaltma, yeniden yazma. Cümleler ve zorluk kaynak özetindeki gibi kalsın. Yalnızca fiil zamanı, sıfat ve bağlaç işaretlerini ekle, Fransızca YDS sorularını yaz.\n\nBAŞLIK: ${topic.title}\nMETİN:\n${topic.excerpt}`);
+    const plain = (passage.paragraphs ?? []).join(" ").replace(/\[\[(?:v|a|c|r):([^\]|]+)(?:\|[^\]]+)?\]\]/g, "$1");
+    if (!passage.paragraphs?.length || !sameDifficulty(plain, topic.excerpt)) continue;
     const { error } = await supabase.from("readings").insert({
       created_on: today,
       topic: passage.topic || "Okuma",
-      title: passage.title || topic.title,
+      title: topic.title,
       minutes: passage.minutes || 4,
-      source_note: "Başlık konudur. Metin yeniden yazıldı, kaynak cümle saklanmaz.",
+      source_note: "Akıştaki özet olduğu gibi durur. Tam makale kaynak linkindedir.",
       source_title: topic.title,
       source_url: topic.url,
       paragraphs: passage.paragraphs,
