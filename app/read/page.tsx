@@ -38,8 +38,7 @@ export default async function ReadIndexPage() {
         <header>
           <h1 className="text-2xl font-semibold tracking-tight">Okuma</h1>
           <p className="mt-2 text-sm leading-6 text-slate-500">
-            Aşağıdaki haberler akıştan gelen gerçek makaleler. Link, o makalenin kendi sayfasını açar.
-            Tam metin orada durur. Burada makale uydurulmaz.
+            Kartı açınca akıştaki gerçek özeti sitede okursun. Fiil, sıfat ve bağlaç işaretlenir, sorular Fransızcadır. Tam makale alttaki linktedir.
           </p>
         </header>
         <ReadingComposer />
@@ -64,18 +63,16 @@ export default async function ReadIndexPage() {
         <div className="space-y-3">
           <h2 className="text-sm font-semibold text-slate-500">Gerçek makaleler</h2>
           {live.map((article) => (
-            <a
+            <Link
               key={article.url}
-              href={article.url}
-              target="_blank"
-              rel="noreferrer"
+              href={`/read/live?url=${encodeURIComponent(article.url)}`}
               className="block rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"
             >
               <p className="text-xs font-semibold uppercase tracking-wide text-indigo-500">{article.source}</p>
               <h2 className="mt-1 text-lg font-semibold">{article.title}</h2>
               {article.excerpt && <p className="mt-2 text-sm leading-6 text-slate-500">{article.excerpt}</p>}
               <p className="mt-3 break-all text-xs text-indigo-600 underline">{article.url}</p>
-            </a>
+            </Link>
           ))}
           {live.length === 0 && <p className="text-sm text-slate-500">Akış şu an makale adresi döndürmedi.</p>}
         </div>

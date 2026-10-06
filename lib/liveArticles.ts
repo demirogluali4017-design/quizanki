@@ -43,3 +43,8 @@ export async function fetchLiveArticles(): Promise<LiveArticle[]> {
   }
   return articles.slice(0, 5);
 }
+
+export async function findLiveArticle(url: string) {
+  const articles = await fetchLiveArticles();
+  return articles.find((article) => article.url === url) ?? null;
+}
