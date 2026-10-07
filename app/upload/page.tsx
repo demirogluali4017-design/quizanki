@@ -336,11 +336,6 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "tri
         </div>
       )}
 
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:bg-red-950">
-        </div>
-      )}
-
-
       {state === "error" && errorMessage && (
         <div className="rounded-xl bg-red-50 dark:bg-red-950 border border-red-200 text-red-700 p-4 text-sm">
           ⚠️ {errorMessage}
