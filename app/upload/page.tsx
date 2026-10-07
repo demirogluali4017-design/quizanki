@@ -3,9 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import MultiFileUploadZone from "@/components/MultiFileUploadZone";
-import OcrWordPicker from "@/components/OcrWordPicker";
 import { compressImages } from "@/lib/imageCompression";
-import { recognizeImages } from "@/lib/ocr";
 import { Flashcard } from "@/types";
 import { invalidateCardCache } from "@/lib/cardCache";
 import { DRAFT_REVIEW, draftBlockReason } from "@/lib/draftReview";
@@ -108,60 +106,6 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "tri
   const [drafts, setDrafts] = useState<
     { key: string; word: string; preposition: string; meaning: string; example_sentence: string; keep: boolean }[]
   >([]);
-  const [ocrPages, setOcrPages] = useState<
-    {
-      url: string;
-      label: string;
-      tokens: Awaited<ReturnType<typeof recognizeImages>>[number]["tokens"];
-      pairs: Awaited<ReturnType<typeof recognizeImages>>[number]["pairs"];
-      width: number;
-      height: number;
-    }[] | null
-  >(null);
-  const [ocrProgress, setOcrProgress] = useState<string | null>(null);
-  const [ocrError, setOcrError] = useState<string | null>(null);
-  const [trialRows, setTrialRows] = useState<
-    { word: string; preposition: string; meaning: string; example_sentence: string }[] | null
-  >(null);
-  const [trialError, setTrialError] = useState<string | null>(null);
-  const [trialBusy, setTrialBusy] = useState(false);
-
-  function clearOcr(pages = ocrPages) {
-    pages?.forEach((page) => URL.revokeObjectURL(page.url));
-    setOcrPages(null);
-    setOcrProgress(null);
-    setOcrError(null);
-  }
-
-  async function handleOcr() {
-    if (selectedFiles.length === 0 || ocrProgress) return;
-    clearOcr();
-    setOcrError(null);
-    try {
-      setOcrProgress("Fotoğraflar hazırlanıyor…");
-      const compressed = await compressImages(selectedFiles);
-      const recognized = await recognizeImages(compressed, (index, progress) => {
-        setOcrProgress(
-          `Sayfa ${index + 1}/${compressed.length} okunuyor… %${Math.round(progress * 100)}`
-        );
-      });
-      setOcrPages(
-        recognized.map((result, index) => ({
-          url: URL.createObjectURL(compressed[index]),
-          label: `Sayfa ${index + 1}`,
-          tokens: result.tokens,
-          pairs: result.pairs,
-          width: result.width,
-          height: result.height,
-        }))
-      );
-      setOcrProgress(null);
-    } catch (err) {
-      setOcrProgress(null);
-      setOcrError(err instanceof Error ? err.message : "Fotoğraf okunamadı.");
-    }
-  }
-
   async function handleProcess() {
     if (selectedFiles.length === 0) return;
 
@@ -193,7 +137,6 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "tri
         if (busy) {
           setState("idle");
           setErrorMessage(message || "Gemini şu anda yoğun.");
-          await handleOcr();
           return;
         }
         throw new Error(message || "Bilinmeyen bir hata oluştu.");
@@ -310,9 +253,7 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "tri
           setDrafts([]);
           setTrialRows(null);
           setTrialError(null);
-          clearOcr();
         }}
-        disabled={state === "processing" || state === "saving" || Boolean(ocrProgress)}
       />
 
       {mode === "trial" && state !== "success" && (
@@ -325,11 +266,11 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "tri
         </button>
       )}
 
-      {selectedFiles.length > 0 && mode !== "trial" && state !== "success" && state !== "review" && state !== "saving" && !ocrPages && (
+      {selectedFiles.length > 0 && mode !== "trial" && state !== "success" && state !== "review" && state !== "saving" && (
         <div className="space-y-2">
           <button
             onClick={handleProcess}
-            disabled={state === "processing" || Boolean(ocrProgress)}
+            disabled={state === "processing"}
             className="w-full rounded-xl bg-indigo-600 py-3 font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {state === "processing" ? (
@@ -345,28 +286,12 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "tri
               `${selectedFiles.length} Sayfayı İşle ve Kelimeleri Çıkar`
             )}
           </button>
-          {mode === "list" && (
-          <button
-            onClick={handleOcr}
-            disabled={state === "processing" || Boolean(ocrProgress)}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white py-3 font-medium text-slate-700 transition-colors hover:border-indigo-400 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-          >
-            {ocrProgress ? (
-              <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-300 border-t-indigo-700" />
-                {ocrProgress}
-              </>
-            ) : (
-              "OCR ile kelime seç"
-            )}
-          </button>
-          )}
           <p className="text-xs text-slate-400">
             {mode === "textbook"
               ? "Yalnızca kalın yazılan kelimeler alınır. Anlam Türkçe, örnek cümle kitaptaki cümledir."
               : mode === "press"
                 ? "Yalnızca sarı boyalı kelimeler alınır. Anlam Türkçe, örnek cümle gazetedeki cümledir."
-                : "Önce Gemini dener. Yoğunsa kelimeleri buradan seçersin."}
+                : "Gemini sayfadaki kelimeleri çıkarır."}
           </p>
         </div>
       )}
@@ -405,13 +330,10 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "tri
         </div>
       )}
 
-      {ocrError && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:bg-red-950">
-          ⚠️ {ocrError}
         </div>
       )}
 
-      {ocrPages && <OcrWordPicker pages={ocrPages} onClose={() => clearOcr()} />}
 
       {state === "error" && errorMessage && (
         <div className="rounded-xl bg-red-50 dark:bg-red-950 border border-red-200 text-red-700 p-4 text-sm">
