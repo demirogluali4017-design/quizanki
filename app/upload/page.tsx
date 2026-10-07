@@ -86,7 +86,7 @@ async function readJson(res: Response) {
   try {
     return JSON.parse(raw);
   } catch {
-    throw new Error("Sunucu sayfayı işleyemedi. Fotoğrafı yeniden çekip tekrar dene.");
+    throw new Error(res.status === 413 ? "Fotoğraf sunucu sınırını aştı. Tek sayfa çek." : "Sunucu sayfayı işleyemedi. Fotoğrafı yeniden çekip tekrar dene.");
   }
 }
 
@@ -119,7 +119,9 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "tri
     setErrorMessage(null);
 
     try {
-      const compressedFiles = await compressImages(selectedFiles);
+      const compressedFiles = await compressImages(selectedFiles, { maxDimension: 1400, quality: 0.72, force: true });
+      const tooBig = compressedFiles.find((file) => file.size > 3.5 * 1024 * 1024);
+      if (tooBig) throw new Error("Fotoğraf hâlâ çok büyük. Sayfayı daha yakından, tek sayfa olarak çek.");
 
       const formData = new FormData();
       compressedFiles.forEach((file) => formData.append("images", file));
