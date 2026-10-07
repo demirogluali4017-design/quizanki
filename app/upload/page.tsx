@@ -106,6 +106,12 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "tri
   const [drafts, setDrafts] = useState<
     { key: string; word: string; preposition: string; meaning: string; example_sentence: string; keep: boolean }[]
   >([]);
+  const [trialRows, setTrialRows] = useState<
+    { word: string; preposition: string; meaning: string; example_sentence: string }[] | null
+  >(null);
+  const [trialError, setTrialError] = useState<string | null>(null);
+  const [trialBusy, setTrialBusy] = useState(false);
+
   async function handleProcess() {
     if (selectedFiles.length === 0) return;
 
