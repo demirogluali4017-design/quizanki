@@ -23,22 +23,23 @@ export async function compressImage(
     return file;
   }
 
-  const bitmap = await createImageBitmap(file);
-  const { width, height } = bitmap;
+  const image = await loadImage(file);
+  const width = image.width;
+  const height = image.height;
 
   const scale = Math.min(1, maxDimension / Math.max(width, height));
-  const targetWidth = Math.round(width * scale);
-  const targetHeight = Math.round(height * scale);
+  const targetWidth = Math.max(1, Math.round(width * scale));
+  const targetHeight = Math.max(1, Math.round(height * scale));
 
   const canvas = document.createElement("canvas");
   canvas.width = targetWidth;
   canvas.height = targetHeight;
 
   const ctx = canvas.getContext("2d");
-  if (!ctx) return file; // canvas desteklenmiyorsa orijinali gönder
+  if (!ctx) return file;
 
-  ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
-  bitmap.close?.();
+  ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
+  if ("close" in image) image.close();
 
   const blob: Blob | null = await new Promise((resolve) =>
     canvas.toBlob(resolve, "image/jpeg", quality)
@@ -62,4 +63,23 @@ export async function compressImages(
 function renameToJpg(originalName: string): string {
   const withoutExt = originalName.replace(/\.[^/.]+$/, "");
   return `${withoutExt || "photo"}.jpg`;
+}
+
+async function loadImage(file: File): Promise<ImageBitmap | HTMLImageElement> {
+  try {
+    return await createImageBitmap(file);
+  } catch {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const el = new Image();
+        el.onload = () => resolve(el);
+        el.onerror = () => reject(new Error("Fotoğraf okunamadı."));
+        el.src = url;
+      });
+      return img;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
 }

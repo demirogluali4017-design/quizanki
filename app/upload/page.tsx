@@ -82,6 +82,24 @@ function TabButton({
 // ============================================================
 // SEKME 1: Fotoğraf(lar)ı yükle → Gemini ile çıkar (azami 3 sayfa)
 // ============================================================
+async function readJson(res: Response) {
+  const raw = await res.text();
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new Error("Sunucu sayfayı işleyemedi. Fotoğrafı yeniden çekip tekrar dene.");
+  }
+}
+
+function humanUploadError(err: unknown) {
+  const message = err instanceof Error ? err.message : "Beklenmeyen hata.";
+  if (/expected pattern/i.test(message)) {
+    return "Fotoğraf işlenemedi. Sayfayı yeniden çekip tekrar dene.";
+  }
+  return message;
+}
+
 function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "trial" }) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [state, setState] = useState<ProcessState>("idle");
@@ -163,7 +181,7 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "tri
         body: formData,
       });
 
-      const data = await res.json();
+      const data = await readJson(res);
 
       if (!res.ok) {
         const message = String(data.error || "");
@@ -206,7 +224,7 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "tri
       setSavedWords(data.words ?? []);
       setState("success");
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Beklenmeyen hata.");
+      setErrorMessage(humanUploadError(err));
       setState("error");
     }
   }
