@@ -18,13 +18,13 @@ body {
 
 @layer base {
   body {
-    background-color: #f4f5f7;
-    color: #11151e;
+    background-color: #efece6;
+    color: #1c1915;
   }
 
   .dark body {
-    background-color: #0b0e14;
-    color: #f4f5f7;
+    background-color: #0b0b0c;
+    color: #efece6;
   }
 }
 
@@ -41,8 +41,8 @@ main {
 }
 
 ::selection {
-  background: #c6cdff;
-  color: #1e1b4b;
+  background: #e8d0cc;
+  color: #4d221b;
 }
 
 button:not(:disabled),
@@ -51,25 +51,25 @@ button:not(:disabled),
 }
 
 :focus-visible {
-  outline: 2px solid #4f46e5;
+  outline: 2px solid #c45c4a;
   outline-offset: 2px;
 }
 
 .shadow-sm {
   box-shadow:
-    0 1px 0 rgba(20, 18, 16, 0.04),
-    0 16px 34px -22px rgba(20, 18, 16, 0.38);
+    0 1px 0 rgba(28, 25, 21, 0.04),
+    0 16px 34px -22px rgba(28, 25, 21, 0.28);
 }
 
 .shadow-md,
 .shadow-xl {
   box-shadow:
-    0 1px 0 rgba(20, 18, 16, 0.05),
-    0 28px 50px -28px rgba(20, 18, 16, 0.42);
+    0 1px 0 rgba(28, 25, 21, 0.05),
+    0 28px 50px -28px rgba(28, 25, 21, 0.32);
 }
 
 .bg-indigo-600 {
-  box-shadow: 0 10px 24px -16px rgba(79, 70, 229, 0.9);
+  box-shadow: 0 10px 24px -16px rgba(196, 92, 74, 0.7);
 }
 
 @media (prefers-reduced-motion: reduce) {
