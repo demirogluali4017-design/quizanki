@@ -28,20 +28,39 @@ Kurallar:
 5. Aynı sözcüğü bir kez yaz.
 Yanıtı sadece JSON array olarak döndür.
 [{"word": "", "preposition": "", "meaning": "", "example_sentence": ""}]`;
+
 const PRESS_PROMPT = `Bu görsel bir Fransızca gazete veya dergi sayfasıdır. Okuyucu bilmediği kelimeleri SARI fosforlu kalemle boyamıştır.
 
-ÖNCE sayfanın tamamını soldan sağa, yukarıdan aşağıya tara. Manşet, spot, sütunlar, kenar kutusu ve fotoğraf altı dahil her sarı izi bul. Sarıyı kaçırmak yasaktır. Soluk, kısa veya kelimenin yalnızca bir hecesini kaplayan sarıyı da say. Emin değilsen kelimeyi DAHİL ET, dışarıda bırakma.
+ÖNCE sayfanın tamamını soldan sağa, yukarıdan aşağıya tara. Manşet, spot, sütunlar, kenar kutus ve fotoğraf altı dahil her sarı izi bul. Sarıyı kaçırmak yasaktır. Soluk, kısa veya kelimenin yalnızca bir hecesini kaplayan sarıyı da say. Emin değilsen kelimeyi DAHİL ET, dışarıda bırakma.
 
 SADECE sarı boyalı sözcük veya tamlamaları çıkar. Boyanmamış kelimeleri kart yapma. Bir tamlamada yalnızca bir kelime sarıysa sadece o kelimeyi al; sarı bütün tamlamadaysa bölme ("mi-mandat", "désastre électoral"). Sarı kelime satır sonunda bölünmüşse birleştir.
 
 Kurallar:
-1. "word": fiilse mastar yaz ("déchire" gördüysen "déchirer"). İsimse cinsiyeti gösteren tanımlığı ekle: "la contestation", "la crue", "le déploiement", "l'emprise". Sayfada un(e) veya (e) yazıyorsa onu da bırak.
+1. "word": fiilse mastar yaz ("déchire" gördüyen "déchirer"). İsimse cinsiyeti gösteren tanımlığı ekle: "la contestation", "la crue", "le déploiement", "l'emprise". Sayfada un(e) veya (e) yazıyorsa onu da bırak.
 2. "preposition": fiil bu cümlede bir edatla kullanılıyorsa kalıbı yaz ("se déployer", "s'emparer de"). Edat yoksa "".
 3. "meaning": SADECE kısa Türkçe anlam. Bu cümledeki anlamı yaz, sözlükteki alakasız ikinci anlamı yazma. Fransızca tanım ekleme.
 4. "example_sentence": o sarı kelimenin geçtiği gazetedeki Fransızca cümleyi aynen kullan. Yeni cümle uydurma, Türkçe yazma, cümleyi kısaltırken kelimeyi düşürme.
 5. Aynı sözcüğü bir kez yaz. Bitirmeden önce sarıları tekrar say ve listede eksik kalmadığından emin ol.
 Yanıtı sadece JSON array olarak döndür.
 [{"word": "", "preposition": "", "meaning": "", "example_sentence": ""}]`;
+
+const KITAP1_PROMPT = `Görseldeki ders notlarını ve kelimeleri analiz et. Görseldeki tüm önemli sözcükleri, kalıpları ve ifadeleri çıkararak bana eksiksiz bir JSON array oluştur.
+
+Kurallar:
+- Görseldeki tüm başlıkları ve alt kategorileri dikkate al.
+- Kalıplaşmış edatlı yapıları (örneğin: en voie de disparition, à l'échelle individuelle) mutlaka edatlarıyla birlikte belirt.
+- İsimleri mutlaka le/la/l' artikelleriyle yaz.
+- Fiilleri mastar olarak yaz.
+- "word" alanına Fransızca kelime/kalıbı yaz (artikellerle birlikte).
+- "preposition" alanına dilbilgisi bilgisi ve edat/bağlaç yapısını yaz (isim/fiil/sıfat + varsa edat).
+- "meaning" alanına Türkçe anlamı yaz.
+- "example_sentence" alanına B2 seviyesine uygun, anlamlı bir Fransızca örnek cümle yaz.
+- Aynı ifadeyi birden fazla kez yazma.
+
+Yanıtı SADECE JSON array olarak döndür, başka metin ekleme.
+Format:
+[{"word": "", "preposition": "", "meaning": "", "example_sentence": ""}]`;
+
 function extractJsonArray(rawText: string): ExtractedWord[] {
   const cleaned = rawText
     .trim()
@@ -185,7 +204,14 @@ export async function POST(request: NextRequest) {
     const files = formData.getAll("images") as File[];
     const mode = String(formData.get("mode") || "list");
     const draft = formData.get("draft") === "1";
-    const prompt = mode === "textbook" ? TEXTBOOK_PROMPT : mode === "press" ? PRESS_PROMPT : EXTRACTION_PROMPT;
+    const prompt =
+      mode === "textbook"
+        ? TEXTBOOK_PROMPT
+        : mode === "press"
+          ? PRESS_PROMPT
+          : mode === "kitap1"
+            ? KITAP1_PROMPT
+            : EXTRACTION_PROMPT;
     if (!files || files.length === 0) {
       return NextResponse.json(
         {
