@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Plus_Jakarta_Sans, Fraunces } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/ThemeProvider";
 import FloatingControls from "@/components/FloatingControls";
@@ -12,7 +12,7 @@ const sans = Plus_Jakarta_Sans({
   display: "swap",
 });
 
-const display = Plus_Jakarta_Sans({
+const display = Fraunces({
   subsets: ["latin", "latin-ext"],
   variable: "--font-display",
   display: "swap",
