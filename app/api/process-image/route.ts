@@ -52,7 +52,8 @@ Kurallar:
 - İsimleri mutlaka le/la/l' artikelleriyle yaz.
 - Fiilleri mastar olarak yaz.
 - "word" alanına Fransızca kelime/kalıbı yaz (artikellerle birlikte).
-- "preposition" alanına dilbilgisi bilgisi ve edat/bağlaç yapısını yaz (isim/fiil/sıfat + varsa edat).
+- "preposition" alanı: SADECE gerçek edat veya edat kalıbı yaz (a, de, en, pour, à, au, aux, à la, en voie de, au niveau de, à l'échelle de vb.). Edat yoksa BOŞ string ("") bırak.
+  YASAK: "verbe", "nom", "feminin", "masculin", "isim", "fiil", "sıfat", "dilbilgisi" gibi sözcük türü veya cinsiyet yazma. Sadece edat varsa yaz, yoksa "".
 - "meaning" alanına Türkçe anlamı yaz.
 - "example_sentence" alanına B2 seviyesine uygun, anlamlı bir Fransızca örnek cümle yaz.
 - Aynı ifadeyi birden fazla kez yazma.
