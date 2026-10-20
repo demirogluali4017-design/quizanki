@@ -87,44 +87,43 @@ async function Dashboard() {
   const newProgress = Math.min(100, Math.round((todayNewWords / Math.max(1, dailyNewGoal)) * 100));
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col px-5 pb-6 pt-6">
-      <div className="home-rise relative overflow-hidden rounded-[2rem] bg-indigo-600 px-6 pb-6 pt-7 text-white">
-        <p className="text-sm font-semibold text-indigo-100">Bugün</p>
-        <h1 className="mt-2 text-4xl font-semibold leading-tight tracking-tight">
-          Çalışmaya hazırsın.
+    <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col px-5 pb-6 pt-8">
+      <div className="home-rise">
+        <p className="text-sm font-medium tracking-wide text-indigo-600 uppercase">Quizanki</p>
+        <h1 className="mt-2 font-display text-4xl font-medium leading-tight tracking-tight text-slate-900">
+          Bugün
         </h1>
-        <p className="mt-3 text-indigo-100">
+        <p className="mt-2 text-lg text-slate-600">
           {pkg.totalCount > 0
             ? `${pkg.totalCount} kelime seni bekliyor.`
             : "Bugünkü paket boş. Yeni kelime ekleyebilirsin."}
         </p>
         <Link
           href="/study/learn"
-          className="mt-6 flex h-14 items-center justify-center rounded-2xl bg-amber-300 text-base font-semibold text-slate-900"
+          className="mt-6 flex h-14 items-center justify-center rounded-xl bg-indigo-600 text-base font-semibold text-white"
         >
-          Bugünün çalışmasına başla
+          Çalış
         </Link>
         <Link
           href="/read"
-          className="mt-3 flex h-12 items-center justify-center rounded-2xl bg-white/15 text-sm font-semibold text-white"
+          className="mt-3 flex h-12 items-center justify-center rounded-xl border border-slate-300 text-sm font-medium text-slate-700"
         >
-          Bugünün beş okuma parçası
+          Okumalar
         </Link>
-        <QuoteFlow />
       </div>
 
-      <div className="home-rise mt-5 space-y-4 rounded-3xl bg-white p-4 shadow-sm dark:bg-slate-900" style={{ animationDelay: "80ms" }}>
+      <div className="home-rise mt-8 space-y-4 rounded-2xl bg-white p-5 shadow-sm" style={{ animationDelay: "80ms" }}>
         <Bar label="Günlük tekrar" done={todayReviews} goal={dailyReviewGoal} progress={reviewProgress} tone="bg-indigo-600" />
-        <Bar label="Yeni kelime" done={todayNewWords} goal={dailyNewGoal} progress={newProgress} tone="bg-emerald-500" />
+        <Bar label="Yeni kelime" done={todayNewWords} goal={dailyNewGoal} progress={newProgress} tone="bg-indigo-400" />
       </div>
 
-      <dl className="mt-4 grid grid-cols-2 gap-3">
-        <Stat label="Tekrar" value={pkg.dueCards.length} tone="bg-indigo-100 text-indigo-700" delay="120ms" />
-        <Stat label="Yeni" value={pkg.newCards.length} tone="bg-emerald-100 text-emerald-800" delay="180ms" />
-        <Stat label="Seri" value={streaks.current} hint={`en uzun ${streaks.longest}`} tone="bg-orange-100 text-orange-800" delay="240ms" />
-        <Stat label="Hatırlama" value={successRate !== null ? `%${successRate}` : "—"} tone="bg-amber-100 text-amber-900" delay="300ms" />
-        <Stat label="Kelime" value={total} tone="bg-violet-100 text-violet-800" delay="360ms" />
-        <Stat label="Uzun süreli" value={longTermCount} tone="bg-sky-100 text-sky-800" delay="420ms" />
+      <dl className="mt-6 grid grid-cols-2 gap-3">
+        <Stat label="Tekrar" value={pkg.dueCards.length} tone="bg-indigo-50 text-indigo-800" delay="120ms" />
+        <Stat label="Yeni" value={pkg.newCards.length} tone="bg-slate-100 text-slate-800" delay="180ms" />
+        <Stat label="Seri" value={streaks.current} hint={`en uzun ${streaks.longest}`} tone="bg-indigo-50 text-indigo-800" delay="240ms" />
+        <Stat label="Hatırlama" value={successRate !== null ? `%${successRate}` : "—"} tone="bg-slate-100 text-slate-800" delay="300ms" />
+        <Stat label="Kelime" value={total} tone="bg-indigo-50 text-indigo-800" delay="360ms" />
+        <Stat label="Uzun süreli" value={longTermCount} tone="bg-slate-100 text-slate-800" delay="420ms" />
       </dl>
 
       {(pkg.overdueCards.length > 0 || pkg.weakCards.length > 0) && (
@@ -139,50 +138,25 @@ async function Dashboard() {
 function ProductDoor() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col justify-center px-5 py-12">
-      <p className="text-sm font-semibold text-indigo-600">Quizanki</p>
-      <h1 className="mt-2 text-4xl font-semibold leading-tight tracking-tight text-slate-900 dark:text-slate-50">
+      <p className="text-sm font-medium tracking-wide text-indigo-600 uppercase">Quizanki</p>
+      <h1 className="mt-3 font-display text-4xl font-medium leading-tight tracking-tight text-slate-900">
         Fransızca kelimeleri gerçekten hatırla.
       </h1>
-      <p className="mt-3 text-base text-slate-500">
+      <p className="mt-4 text-base leading-relaxed text-slate-600">
         Gazetedeki bilmediğin kelime bugünün kartı olur. Unuttuğun kelime yarın geri gelir.
       </p>
-      <ul className="mt-6 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+      <ul className="mt-6 space-y-2 text-sm text-slate-600">
         <li>Fotoğraftan kelime alırsın.</li>
         <li>Her gün yalnız o günkü paketi çalışırsın.</li>
         <li>Unuttum, zorlandım, hatırladım ya da çok kolaydı dersin.</li>
       </ul>
       <Link
         href="/login"
-        className="mt-8 flex h-14 items-center justify-center rounded-2xl bg-indigo-600 text-base font-semibold text-white"
+        className="mt-8 flex h-14 items-center justify-center rounded-xl bg-indigo-600 text-base font-semibold text-white"
       >
         Giriş yap
       </Link>
     </main>
-  );
-}
-
-const POLYGLOT_LINES = [
-  { name: "Kató Lomb", text: "Dil, kötü bilinmeye bile değen tek şeydir." },
-  { name: "Kató Lomb", text: "Yalnızca diller dünyasında amatör değerlidir." },
-  { name: "Kató Lomb", text: "Bilgi, çivi gibi, çakıldıkça yük taşır." },
-  { name: "Steve Kaufmann", text: "İlgini izlersen, dil öğrenen biri olarak yavaş yavaş ilerlersin." },
-  { name: "Steve Kaufmann", text: "Dil öğrenmek, kendini geliştirmenin en yararlı yollarından biridir." },
-  { name: "Steve Kaufmann", text: "Mükemmeli aramadığın sürece öğrenebileceğin dilin sınırı yoktur." },
-];
-
-function QuoteFlow() {
-  const loop = [...POLYGLOT_LINES, ...POLYGLOT_LINES];
-  return (
-    <div className="quote-lane mt-6" aria-label="Çokdilli insanların sözleri">
-      <div className="quote-track">
-        {loop.map((line, index) => (
-          <p key={`${line.name}-${index}`} className="quote-item">
-            <span className="font-semibold text-white">{line.text}</span>
-            <span className="text-indigo-100"> — {line.name}</span>
-          </p>
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -203,11 +177,11 @@ function Bar({
     <div>
       <div className="mb-1.5 flex items-center justify-between text-sm">
         <span className="text-slate-500">{label}</span>
-        <span className="font-semibold text-slate-800 dark:text-slate-100">
+        <span className="font-medium text-slate-800">
           {done}/{goal}
         </span>
       </div>
-      <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+      <div className="h-2 overflow-hidden rounded-full bg-slate-200">
         <div className={`home-bar h-full rounded-full ${tone}`} style={{ width: `${progress}%` }} />
       </div>
     </div>
@@ -228,10 +202,10 @@ function Stat({
   delay: string;
 }) {
   return (
-    <div className={`home-rise rounded-2xl px-4 py-3 ${tone}`} style={{ animationDelay: delay }}>
-      <dt className="text-sm font-medium opacity-80">{label}</dt>
-      <dd className="mt-0.5 text-3xl font-semibold tracking-tight">{value}</dd>
-      {hint && <p className="text-xs opacity-70">{hint}</p>}
+    <div className={`home-rise rounded-xl px-4 py-3 ${tone}`} style={{ animationDelay: delay }}>
+      <dt className="text-sm font-medium opacity-70">{label}</dt>
+      <dd className="mt-0.5 font-display text-3xl font-medium tracking-tight">{value}</dd>
+      {hint && <p className="text-xs opacity-60">{hint}</p>}
     </div>
   );
 }
