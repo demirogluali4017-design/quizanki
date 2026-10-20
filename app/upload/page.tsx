@@ -9,7 +9,7 @@ import { invalidateCardCache } from "@/lib/cardCache";
 import { DRAFT_REVIEW, draftBlockReason } from "@/lib/draftReview";
 
 type ProcessState = "idle" | "processing" | "review" | "saving" | "success" | "error";
-type Tab = "photo" | "book" | "press" | "trial" | "manual";
+type Tab = "photo" | "book" | "press" | "kitap1" | "trial" | "manual";
 
 export default function UploadPage() {
   const [tab, setTab] = useState<Tab>("photo");
@@ -34,6 +34,9 @@ export default function UploadPage() {
           <TabButton active={tab === "press"} onClick={() => setTab("press")}>
             📰 Sarı kelimeler
           </TabButton>
+          <TabButton active={tab === "kitap1"} onClick={() => setTab("kitap1")}>
+            📕 Kitap1 (Ders notu)
+          </TabButton>
           <TabButton active={tab === "trial"} onClick={() => setTab("trial")}>
             Deneme tablo
           </TabButton>
@@ -46,7 +49,17 @@ export default function UploadPage() {
           <ManualAddPanel />
         ) : (
           <PhotoUploadPanel
-            mode={tab === "book" ? "textbook" : tab === "press" ? "press" : tab === "trial" ? "trial" : "list"}
+            mode={
+              tab === "book"
+                ? "textbook"
+                : tab === "press"
+                  ? "press"
+                  : tab === "kitap1"
+                    ? "kitap1"
+                    : tab === "trial"
+                      ? "trial"
+                      : "list"
+            }
           />
         )}
       </div>
@@ -77,9 +90,6 @@ function TabButton({
   );
 }
 
-// ============================================================
-// SEKME 1: Fotoğraf(lar)ı yükle → Gemini ile çıkar (azami 3 sayfa)
-// ============================================================
 async function readJson(res: Response) {
   const raw = await res.text();
   if (!raw) return {};
@@ -98,7 +108,7 @@ function humanUploadError(err: unknown) {
   return message;
 }
 
-function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "trial" }) {
+function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "kitap1" | "trial" }) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [state, setState] = useState<ProcessState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -253,6 +263,11 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "tri
           Fotoğrafı seç, sonra aşağıdaki butona bas. Tablo çıkar, kaydetmez.
         </p>
       )}
+      {mode === "kitap1" && (
+        <p className="text-sm text-slate-600 dark:text-slate-300">
+          Ders notu fotoğrafı yükle. Gemini tüm önemli sözcükleri, kalıpları ve edatlı yapıları çıkarır.
+        </p>
+      )}
       <MultiFileUploadZone
         onFilesChanged={(files) => {
           setSelectedFiles(files);
@@ -290,6 +305,8 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "tri
               `${selectedFiles.length} kitap sayfasındaki koyu kelimeleri çıkar`
             ) : mode === "press" ? (
               `${selectedFiles.length} sayfadaki sarı kelimeleri çıkar`
+            ) : mode === "kitap1" ? (
+              `${selectedFiles.length} ders notundaki kelimeleri ve kalıpları çıkar`
             ) : (
               `${selectedFiles.length} Sayfayı İşle ve Kelimeleri Çıkar`
             )}
@@ -299,7 +316,9 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "tri
               ? "Yalnızca kalın yazılan kelimeler alınır. Anlam Türkçe, örnek cümle kitaptaki cümledir."
               : mode === "press"
                 ? "Yalnızca sarı boyalı kelimeler alınır. Anlam Türkçe, örnek cümle gazetedeki cümledir."
-                : "Gemini sayfadaki kelimeleri çıkarır."}
+                : mode === "kitap1"
+                  ? "Tüm önemli sözcükler, kalıplar ve edatlı yapılar çıkarılır. İsimler artikelleriyle, örnekler B2 seviyesinde."
+                  : "Gemini sayfadaki kelimeleri çıkarır."}
           </p>
         </div>
       )}
@@ -389,7 +408,7 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "tri
                       value={row.preposition}
                       onChange={(event) => updateDraft(row.key, "preposition", event.target.value)}
                       className="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900"
-                      placeholder="Preposition"
+                      placeholder="Dilbilgisi / Edat"
                     />
                     <input
                       value={row.meaning}
@@ -433,7 +452,7 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "tri
               <thead className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 text-left">
                 <tr>
                   <th className="px-4 py-3 font-medium">Kelime</th>
-                  <th className="px-4 py-3 font-medium">Preposition</th>
+                  <th className="px-4 py-3 font-medium">Dilbilgisi / Edat</th>
                   <th className="px-4 py-3 font-medium">Anlam</th>
                   <th className="px-4 py-3 font-medium">Örnek Cümle</th>
                 </tr>
@@ -456,9 +475,6 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "tri
   );
 }
 
-// ============================================================
-// SEKME 2: Manuel ekleme (yapay zeka yok, doğrudan form)
-// ============================================================
 function ManualAddPanel() {
   const [word, setWord] = useState("");
   const [preposition, setPreposition] = useState("");
@@ -467,13 +483,6 @@ function ManualAddPanel() {
   const [state, setState] = useState<ProcessState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [addedCount, setAddedCount] = useState(0);
-
-  function resetForm() {
-    setWord("");
-    setPreposition("");
-    setMeaning("");
-    setExampleSentence("");
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -487,23 +496,21 @@ function ManualAddPanel() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          word,
-          preposition,
-          meaning,
-          example_sentence: exampleSentence,
+          word: word.trim(),
+          preposition: preposition.trim() || null,
+          meaning: meaning.trim(),
+          example_sentence: exampleSentence.trim(),
         }),
       });
-
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Bilinmeyen bir hata oluştu.");
-      }
-
-      setAddedCount((c) => c + 1);
+      if (!res.ok) throw new Error(data.error || "Kaydedilemedi.");
       invalidateCardCache();
+      setAddedCount((c) => c + 1);
+      setWord("");
+      setPreposition("");
+      setMeaning("");
+      setExampleSentence("");
       setState("success");
-      resetForm();
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Beklenmeyen hata.");
       setState("error");
@@ -511,84 +518,43 @@ function ManualAddPanel() {
   }
 
   return (
-    <div className="space-y-4">
-      <form onSubmit={handleSubmit} className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-6 space-y-4">
-        <Field label="Kelime *" value={word} onChange={setWord} placeholder="ör. améliorer" required />
-        <Field
-          label="Preposition (edat)"
-          value={preposition}
-          onChange={setPreposition}
-          placeholder="ör. à qn/qch (varsa)"
-        />
-        <Field label="Anlam (Türkçe) *" value={meaning} onChange={setMeaning} placeholder="ör. geliştirmek" required />
-        <Field
-          label="Örnek Cümle (Fransızca)"
-          value={exampleSentence}
-          onChange={setExampleSentence}
-          placeholder="ör. Il faut améliorer ce projet."
-          textarea
-        />
-
-        <button
-          type="submit"
-          disabled={state === "processing" || !word.trim() || !meaning.trim()}
-          className="w-full rounded-xl bg-indigo-600 text-white font-medium py-3 hover:bg-indigo-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {state === "processing" ? "Ekleniyor..." : "Kelimeyi Ekle"}
-        </button>
-      </form>
-
-      {state === "success" && (
-        <div className="rounded-xl bg-green-50 dark:bg-green-950 border border-green-200 text-green-700 p-4 text-sm">
-          ✅ Kelime eklendi. Bu oturumda toplam {addedCount} kelime ekledin — devam edebilirsin.
-        </div>
-      )}
-
-      {state === "error" && errorMessage && (
-        <div className="rounded-xl bg-red-50 dark:bg-red-950 border border-red-200 text-red-700 p-4 text-sm">
-          ⚠️ {errorMessage}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
-  required,
-  textarea,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  required?: boolean;
-  textarea?: boolean;
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{label}</label>
-      {textarea ? (
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          rows={2}
-          className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-        />
-      ) : (
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          required={required}
-          className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-        />
-      )}
-    </div>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <input
+        value={word}
+        onChange={(e) => setWord(e.target.value)}
+        placeholder="Kelime / Kalıp (Fransızca)"
+        className="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-900"
+        required
+      />
+      <input
+        value={preposition}
+        onChange={(e) => setPreposition(e.target.value)}
+        placeholder="Dilbilgisi / Edat"
+        className="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-900"
+      />
+      <input
+        value={meaning}
+        onChange={(e) => setMeaning(e.target.value)}
+        placeholder="Türkçe anlamı"
+        className="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-900"
+        required
+      />
+      <textarea
+        value={exampleSentence}
+        onChange={(e) => setExampleSentence(e.target.value)}
+        placeholder="Fransızca örnek cümle"
+        className="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-900"
+        rows={3}
+      />
+      {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
+      {state === "success" && <p className="text-sm text-green-600">Kaydedildi. ({addedCount})</p>}
+      <button
+        type="submit"
+        disabled={state === "processing"}
+        className="w-full rounded-xl bg-indigo-600 py-3 font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+      >
+        {state === "processing" ? "Kaydediliyor..." : "Ekle"}
+      </button>
+    </form>
   );
 }
