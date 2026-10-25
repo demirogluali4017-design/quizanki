@@ -12,9 +12,6 @@ import {
 // ============================================================
 // 1) ÖZ-DEĞERLENDİRME → SM-2 RATING EŞLEMESİ
 // ============================================================
-// Kullanıcıya asla serbest yazı yaptırmıyoruz (yazım hatası ölçüm
-// hatasına yol açar). Bunun yerine 4 öz-değerlendirme seçeneği SM-2
-// rating'ine eşlenir. SM-2'nin kendi formülleri (lib/sm2.ts) değişmedi.
 export function mapAssessmentToRating(assessment: SelfAssessment): SM2Rating {
   switch (assessment) {
     case "forgot":
@@ -29,11 +26,8 @@ export function mapAssessmentToRating(assessment: SelfAssessment): SM2Rating {
 }
 
 // ============================================================
-// 2) ÖĞRENME AŞAMASI (Learning Stage) — DB'de tutulmaz, türetilir
+// 2) ÖĞRENME AŞAMASI (Learning Stage)
 // ============================================================
-// NEW → LEARNING → CONSOLIDATING → LONG_TERM
-// repetitions ve interval'a bakarak hesaplanır; SM-2 verisini
-// okur ama hiçbir şekilde değiştirmez.
 export function deriveLearningStage(card: Flashcard): LearningStage {
   if (card.repetitions === 0) return "new";
   if (card.repetitions <= 2 || card.interval < 7) return "learning";
@@ -49,7 +43,7 @@ export const LEARNING_STAGE_LABELS: Record<LearningStage, string> = {
 };
 
 // ============================================================
-// 3) KART DURUMU (Card Status) — DB'de tutulmaz, türetilir
+// 3) KART DURUMU (Card Status)
 // ============================================================
 export function deriveCardStatus(card: Flashcard): CardStatus {
   const now = new Date();
@@ -76,11 +70,7 @@ export const CARD_STATUS_LABELS: Record<CardStatus, string> = {
 // ============================================================
 // 4) ZAYIF KELİME TESPİTİ
 // ============================================================
-// Bir kart şu durumlarda "zayıf" işaretlenir:
-// - incorrect_count, correct_count'tan belirgin şekilde fazlaysa
-// - struggle_count (art arda "Zorlandım" seçimi) eşiği aşarsa
-// - SM-2 intervali uzun süredir 1-2 günde takılı kalmışsa (ilerlemiyorsa)
-const WEAK_INCORRECT_RATIO_THRESHOLD = 0.4; // %40+ yanlış oranı
+const WEAK_INCORRECT_RATIO_THRESHOLD = 0.4;
 const WEAK_STRUGGLE_THRESHOLD = 3;
 const WEAK_STUCK_INTERVAL_DAYS = 2;
 const WEAK_STUCK_MIN_REPETITIONS = 4;
@@ -106,7 +96,6 @@ export function shouldMarkAsWeak(card: Flashcard): boolean {
   return false;
 }
 
-/** Bir kartın zayıflık göstergelerini bir sonraki tekrar cevabına göre günceller. */
 export function computeWeakWordUpdate(
   card: Flashcard,
   assessment: SelfAssessment
@@ -123,12 +112,11 @@ export function computeWeakWordUpdate(
   const isCorrectish = assessment !== "forgot";
   const nextCorrect = isCorrectish ? correct_count + 1 : correct_count;
   const nextIncorrect = !isCorrectish ? incorrect_count + 1 : incorrect_count;
-  // "Hatırladım" veya "Çok kolaydı" struggle sayacını sıfırlar (art arda zorlanma bitti)
   const nextStruggle =
     assessment === "struggled"
       ? struggle_count + 1
       : assessment === "forgot"
-        ? struggle_count // unutma struggle'ı artırmaz, kendi kriteriyle zaten yakalanır
+        ? struggle_count
         : 0;
 
   const updatedCard: Flashcard = {
@@ -138,9 +126,6 @@ export function computeWeakWordUpdate(
     struggle_count: nextStruggle,
   };
 
-  // "Hatırladım"/"Çok kolaydı" ile struggle sıfırlandıysa ve yanlış sayısı
-  // doğru sayısını geçmiyorsa zayıf etiketi kaldırılabilir; aksi halde
-  // mevcut kriterlere göre (yeniden) değerlendirilir.
   const recovering =
     (assessment === "recalled" || assessment === "easy") &&
     nextStruggle === 0 &&
@@ -161,8 +146,6 @@ export function computeWeakWordUpdate(
 // ============================================================
 // 5) GÜNLÜK ÇALIŞMA PAKETİ
 // ============================================================
-// Sabit sayılar değil; kullanıcının mevcut zayıf kelime yüküne göre
-// yeni kelime sayısı adaptif olarak azaltılır/artırılır.
 const BASE_NEW_WORDS_PER_DAY = 8;
 const MAX_DUE_PER_DAY = 40;
 
@@ -185,8 +168,6 @@ export function buildDailyPackage(allCards: Flashcard[]): DailyPackage {
     }
   }
 
-  // Kullanıcının zayıf kelime yükü fazlaysa yeni kelime sayısını azalt,
-  // az/hiç zayıf kelimesi yoksa artır — aşırı yükleme yapmadan.
   let newWordBudget = BASE_NEW_WORDS_PER_DAY;
   if (weakCards.length >= 15) newWordBudget = 2;
   else if (weakCards.length >= 8) newWordBudget = 4;
@@ -208,13 +189,8 @@ export function buildDailyPackage(allCards: Flashcard[]): DailyPackage {
 }
 
 // ============================================================
-// 6) INTERLEAVING — günlük paketi karışık sırayla diz
+// 6) INTERLEAVING
 // ============================================================
-// Basit ve etkili bir interleaving: önceliği (gecikmiş > zayıf > tekrar >
-// yeni) koruyarak ama art arda aynı kategoriden kart gelmesini engelleyen
-// bir "round-robin" karıştırma yapar. Kullanıcı bir önceki kartın
-// bağlamından bir sonrakini tahmin edemesin diye kategoriler birbirine
-// serpiştirilir.
 export function interleaveDailyPackage(pkg: DailyPackage): Flashcard[] {
   const buckets = [
     shuffle(pkg.overdueCards),
@@ -249,38 +225,30 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 // ============================================================
-// 7) SORU MOTORU — kartın aşamasına göre soru tipi seç
+// 7) SORU MOTORU
 // ============================================================
-// SM-2 sadece "ne zaman"a karar verir; bu fonksiyon "nasıl"a karar verir.
-// Aynı kelime sürekli aynı şekilde sorulmasın diye aşamaya göre bir
-// olasılık dağılımından tip seçilir (tamamen deterministik değil).
 export function pickQuestionType(card: Flashcard, poolSize: number): QuestionType {
   const stage = deriveLearningStage(card);
 
-  // Havuzda yeterli kart yoksa (distractor üretilemez) her zaman recall kullan
   if (poolSize < 4) return "recall";
 
   const roll = Math.random();
 
   switch (stage) {
     case "new":
-      // Yeni kelimede önce çıplak hatırlama + gösterme, tanıma sorusu ara sıra
       return roll < 0.7 ? "recall" : "mcq_fr_to_tr";
 
     case "learning":
-      // Tanıma ağırlıklı, bazen ters yön
       if (roll < 0.45) return "mcq_fr_to_tr";
       if (roll < 0.7) return "recall";
       return "mcq_tr_to_fr";
 
     case "consolidating":
-      // Aktif hatırlama ve bağlam ağırlıklı
       if (roll < 0.4) return "mcq_tr_to_fr";
       if (roll < 0.7 && card.example_sentence) return "fill_blank";
       return "recall";
 
     case "long_term":
-      // Bağlam ağırlıklı — kalıcılığı bağlamla test et
       if (card.example_sentence && roll < 0.6) return "fill_blank";
       return "mcq_tr_to_fr";
   }
@@ -289,11 +257,6 @@ export function pickQuestionType(card: Flashcard, poolSize: number): QuestionTyp
 // ============================================================
 // 8) DISTRACTOR ÜRETİMİ
 // ============================================================
-// Kelime + preposition testi: "word" alanı test edilirken, kelimenin
-// preposition kalıbı varsa (örn. "à qn/qch") bu kalıp kelimeyle
-// BİRLİKTE tek bir test edilebilir birim olarak kullanılır. Böylece
-// kullanıcı doğru edatı bilmeden sadece kelimeyi tanıyarak testi
-// geçemez.
 export function getTestableWord(card: Flashcard): string {
   return card.preposition ? `${card.word} ${card.preposition}` : card.word;
 }
@@ -302,7 +265,6 @@ function hasTurkishOnlyLetters(text: string): boolean {
   return /[ğĞşŞıİ]/.test(text);
 }
 
-/** Fransızca kelime gösterilip Türkçe anlamı sorulabilir mi? */
 export function frenchToTurkishPrompt(card: Flashcard): { label: string; heading: string } | null {
   const word = getTestableWord(card).trim();
   const meaning = (card.meaning ?? "").trim();
@@ -322,10 +284,6 @@ export function frenchToTurkishPrompt(card: Flashcard): { label: string; heading
   return null;
 }
 
-// Tamamen rastgele değil: benzer kelime uzunluğu / aynı havuzdan seçim.
-// Kullanıcının önceden karıştırdığı kelimeler (weak/struggle kayıtlı
-// kartlar) varsa onlara öncelik verilir — böylece distractor'lar
-// kullanıcının gerçekten karıştırma ihtimali olan kelimelerden seçilir.
 export function buildDistractors(
   target: Flashcard,
   pool: Flashcard[],
@@ -333,7 +291,10 @@ export function buildDistractors(
   count = 3,
   combinePreposition = true
 ): string[] {
-  const candidates = pool.filter((c) => c.id !== target.id);
+  // Aynı eş anlamlı gruptaki kelimeleri distractor olarak alma
+  const candidates = pool.filter(
+    (c) => c.id !== target.id && (!target.group_id || c.group_id !== target.group_id)
+  );
 
   const getValue = (c: Flashcard): string =>
     field === "word" ? (combinePreposition ? getTestableWord(c) : c.word) : c.meaning;
@@ -346,7 +307,6 @@ export function buildDistractors(
       const value = getValue(c);
       const lenDiff = Math.abs(value.length - targetLen);
       const struggleBonus = (c.struggle_count ?? 0) + (c.is_weak ? 2 : 0);
-      // Küçük uzunluk farkı ve yüksek struggle geçmişi = daha "makul" distractor
       const score = -lenDiff + struggleBonus * 2;
       return { value, score };
     })
@@ -385,7 +345,6 @@ export function buildFillBlankQuestion(
 ): StudyQuestion | null {
   if (!card.example_sentence) return null;
 
-  // Kelimeyi cümlede bul ve ______ ile değiştir (büyük/küçük harf duyarsız)
   const escaped = card.word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const regex = new RegExp(escaped, "i");
   if (!regex.test(card.example_sentence)) return null;
@@ -402,10 +361,7 @@ export function buildFillBlankQuestion(
   };
 }
 
-/** Bir kart için tam bir StudyQuestion nesnesi üretir (soru tipini de kendi seçer). */
 export function buildQuestion(card: Flashcard, pool: Flashcard[]): StudyQuestion {
-  // Kartın eş anlamlı grubu varsa, ara sıra (yaklaşık %25) doğrudan
-  // grup testi sor — hafıza çapası mantığını pekiştirmek için.
   if (card.group_id && Math.random() < 0.25) {
     const synonymQuestion = buildSynonymQuestion(card, pool);
     if (synonymQuestion) return synonymQuestion;
@@ -444,7 +400,6 @@ export function buildQuestion(card: Flashcard, pool: Flashcard[]): StudyQuestion
   if (type === "fill_blank") {
     const fillBlank = buildFillBlankQuestion(card, pool);
     if (fillBlank) return fillBlank;
-    // Cümle uygun değilse recall'a düş
     return { type: "recall", card };
   }
 
@@ -452,17 +407,13 @@ export function buildQuestion(card: Flashcard, pool: Flashcard[]): StudyQuestion
 }
 
 // ============================================================
-// 9) TEST MODU — SM-2'yi hiç etkilemeyen, her zaman cevaplanabilir soru üretir
+// 9) TEST MODU
 // ============================================================
-// "Test" modu için: her zaman mcq_fr_to_tr / mcq_tr_to_fr / fill_blank
-// döndürür, ASLA "recall" döndürmez (çünkü test modunda otomatik
-// doğru/yanlış değerlendirmesi gerekiyor). Bu fonksiyon SM-2 durumuna
-// bakmaz, sadece havuzdan rastgele bir tip seçer.
 export function buildTestQuestion(card: Flashcard, pool: Flashcard[]): StudyQuestion {
   const candidateTypes: QuestionType[] = ["mcq_fr_to_tr", "mcq_tr_to_fr"];
-  if (card.example_sentence) candidateTypes.push("fill_blank", "fill_blank"); // biraz daha olası yap
+  if (card.example_sentence) candidateTypes.push("fill_blank", "fill_blank");
   if (card.group_id && getGroupSiblings(card, pool).length > 0) {
-    candidateTypes.push("synonym", "synonym"); // grubu varsa biraz daha olası yap
+    candidateTypes.push("synonym", "synonym");
   }
 
   const type = candidateTypes[Math.floor(Math.random() * candidateTypes.length)];
@@ -509,22 +460,11 @@ export function buildTestQuestion(card: Flashcard, pool: Flashcard[]): StudyQues
 // ============================================================
 // 10) EŞ ANLAMLI GRUP TESTİ
 // ============================================================
-// Amaç: kullanıcı bir kelimeyi unutsa bile, aynı gruptaki (group_id
-// aynı) bildiği başka bir kelime hafıza çapası olarak devreye girsin.
-// Bu yüzden distractor'lar özellikle FARKLI gruplardan/grupsuz
-// kartlardan seçilir — doğru cevap her zaman AYNI gruptan bir kelime.
-
-/** Bir kartın aynı gruptaki diğer üyelerini döndürür (kendisi hariç). */
 export function getGroupSiblings(card: Flashcard, pool: Flashcard[]): Flashcard[] {
   if (!card.group_id) return [];
   return pool.filter((c) => c.id !== card.id && c.group_id === card.group_id);
 }
 
-/**
- * Eş anlamlı grup sorusu üretir. Kartın grubu yoksa veya grupta tek
- * başınaysa null döner (bu durumda çağıran taraf başka bir soru
- * tipine düşmeli).
- */
 export function buildSynonymQuestion(card: Flashcard, pool: Flashcard[]): StudyQuestion | null {
   const siblings = getGroupSiblings(card, pool);
   if (siblings.length === 0) return null;
@@ -532,16 +472,14 @@ export function buildSynonymQuestion(card: Flashcard, pool: Flashcard[]): StudyQ
   const correctSibling = siblings[Math.floor(Math.random() * siblings.length)];
   const correctAnswer = getTestableWord(correctSibling);
 
-  // Distractor'lar: FARKLI gruptan veya grupsuz kartlardan (aynı grubun
-  // başka üyeleri distractor olarak KULLANILMAZ, çünkü onlar da doğru
-  // sayılırdı — testin amacı grup ayrımını netleştirmek).
   const outsideGroup = pool.filter((c) => c.id !== card.id && c.group_id !== card.group_id);
 
   const distractors = shuffle(outsideGroup)
     .slice(0, 3)
-    .map((c) => getTestableWord(c));
+    .map((c) => getTestableWord(c))
+    .filter((w) => w && w !== correctAnswer);
 
-  const options = shuffle([correctAnswer, ...distractors]);
+  const options = shuffle([correctAnswer, ...distractors.slice(0, 3)]);
 
   return {
     type: "synonym",
