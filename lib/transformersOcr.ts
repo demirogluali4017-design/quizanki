@@ -1,8 +1,3 @@
-import { pipeline, env } from "@huggingface/transformers";
-
-// Tarayıcıda model indirmeyi engelleme (CDN'den yükler)
-env.allowLocalModels = false;
-
 export type OcrWordCandidate = {
   word: string;
   preposition: string;
@@ -11,22 +6,28 @@ export type OcrWordCandidate = {
   rawLine: string;
 };
 
-let ocrPipeline: Awaited<ReturnType<typeof pipeline>> | null = null;
+type Pipeline = (input: string, options?: { max_new_tokens?: number }) => Promise<{ generated_text?: string } | { generated_text?: string }[]>;
 
-/** Transformers.js TrOCR ile görselden metin çıkarır. */
+let ocrPipeline: Pipeline | null = null;
+
+/** Transformers.js TrOCR ile görselden metin çıkarır (sadece tarayıcıda). */
 export async function recognizeWithTransformers(image: File | Blob): Promise<string> {
+  if (typeof window === "undefined") {
+    throw new Error("Bu işlem sadece tarayıcıda çalışır.");
+  }
+
   if (!ocrPipeline) {
-    ocrPipeline = await pipeline("image-to-text", "Xenova/trocr-small-printed", {
+    const { pipeline, env } = await import("@huggingface/transformers");
+    env.allowLocalModels = false;
+    ocrPipeline = (await pipeline("image-to-text", "Xenova/trocr-small-printed", {
       dtype: "q8",
-    });
+    })) as Pipeline;
   }
 
   const url = URL.createObjectURL(image);
   try {
-    const result = await ocrPipeline(url, {
-      max_new_tokens: 512,
-    });
-    const text = Array.isArray(result) ? result[0]?.generated_text : (result as any)?.generated_text;
+    const result = await ocrPipeline(url, { max_new_tokens: 512 });
+    const text = Array.isArray(result) ? result[0]?.generated_text : result?.generated_text;
     return typeof text === "string" ? text : "";
   } finally {
     URL.revokeObjectURL(url);
