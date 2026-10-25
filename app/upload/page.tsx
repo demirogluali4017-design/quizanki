@@ -7,10 +7,10 @@ import { compressImages } from "@/lib/imageCompression";
 import { Flashcard } from "@/types";
 import { invalidateCardCache } from "@/lib/cardCache";
 import { DRAFT_REVIEW, draftBlockReason } from "@/lib/draftReview";
-import { recognizeFrench, extractCandidatesFromOcr } from "@/lib/tesseractOcr";
+import { recognizeWithTransformers, extractCandidatesFromOcr } from "@/lib/transformersOcr";
 
 type ProcessState = "idle" | "processing" | "review" | "saving" | "success" | "error";
-type Tab = "photo" | "book" | "press" | "kitap1" | "tesseract" | "trial" | "manual";
+type Tab = "photo" | "book" | "press" | "kitap1" | "transformers" | "trial" | "manual";
 
 export default function UploadPage() {
   const [tab, setTab] = useState<Tab>("photo");
@@ -38,8 +38,8 @@ export default function UploadPage() {
           <TabButton active={tab === "kitap1"} onClick={() => setTab("kitap1")}>
             📕 Kitap1 (Ders notu)
           </TabButton>
-          <TabButton active={tab === "tesseract"} onClick={() => setTab("tesseract")}>
-            🔍 Tesseract (yerel)
+          <TabButton active={tab === "transformers"} onClick={() => setTab("transformers")}>
+            🧠 Transformers (yerel)
           </TabButton>
           <TabButton active={tab === "trial"} onClick={() => setTab("trial")}>
             Deneme tablo
@@ -60,8 +60,8 @@ export default function UploadPage() {
                   ? "press"
                   : tab === "kitap1"
                     ? "kitap1"
-                    : tab === "tesseract"
-                      ? "tesseract"
+                    : tab === "transformers"
+                      ? "transformers"
                       : tab === "trial"
                         ? "trial"
                         : "list"
@@ -114,7 +114,7 @@ function humanUploadError(err: unknown) {
   return message;
 }
 
-function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "kitap1" | "tesseract" | "trial" }) {
+function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "kitap1" | "transformers" | "trial" }) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [state, setState] = useState<ProcessState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -129,18 +129,18 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "kit
   const [trialBusy, setTrialBusy] = useState(false);
   const [ocrRaw, setOcrRaw] = useState<string | null>(null);
 
-  async function handleTesseract() {
+  async function handleTransformers() {
     if (selectedFiles.length === 0) return;
     setState("processing");
     setErrorMessage(null);
     setOcrRaw(null);
     try {
       const file = selectedFiles[0];
-      const text = await recognizeFrench(file);
+      const text = await recognizeWithTransformers(file);
       setOcrRaw(text);
       const candidates = extractCandidatesFromOcr(text);
       if (candidates.length === 0) {
-        setErrorMessage("Tesseract hiç kelime bulamadı. Fotoğrafı daha net çekip tekrar dene.");
+        setErrorMessage("Model hiç kelime bulamadı. Fotoğrafı daha net çekip tekrar dene.");
         setState("error");
         return;
       }
@@ -156,7 +156,7 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "kit
       );
       setState("review");
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Tesseract hatası");
+      setErrorMessage(err instanceof Error ? err.message : "Transformers hatası");
       setState("error");
     }
   }
@@ -308,9 +308,9 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "kit
           Ders notu fotoğrafı yükle. Gemini tüm önemli sözcükleri, kalıpları ve edatlı yapıları çıkarır.
         </p>
       )}
-      {mode === "tesseract" && (
+      {mode === "transformers" && (
         <p className="text-sm text-slate-600 dark:text-slate-300">
-          Yerel Tesseract OCR (token yok). Ham metin çıkarılır, basit kelime adayları listelenir. Anlam ve örnek cümleyi sen doldurursun.
+          Yerel Transformers.js (TrOCR, token yok). İlk kullanımda model indirilir. Anlam ve örnek cümleyi sen doldurursun.
         </p>
       )}
       <MultiFileUploadZone
@@ -335,17 +335,17 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "kit
         </button>
       )}
 
-      {mode === "tesseract" && selectedFiles.length > 0 && state !== "success" && state !== "review" && state !== "saving" && (
+      {mode === "transformers" && selectedFiles.length > 0 && state !== "success" && state !== "review" && state !== "saving" && (
         <button
-          onClick={handleTesseract}
+          onClick={handleTransformers}
           disabled={state === "processing"}
-          className="w-full rounded-xl bg-emerald-700 py-3 font-medium text-white disabled:opacity-50"
+          className="w-full rounded-xl bg-violet-700 py-3 font-medium text-white disabled:opacity-50"
         >
-          {state === "processing" ? "Tesseract okuyor..." : "Tesseract ile kelime çıkar (yerel)"}
+          {state === "processing" ? "Model okuyor..." : "Transformers ile kelime çıkar (yerel)"}
         </button>
       )}
 
-      {selectedFiles.length > 0 && mode !== "trial" && mode !== "tesseract" && state !== "success" && state !== "review" && state !== "saving" && (
+      {selectedFiles.length > 0 && mode !== "trial" && mode !== "transformers" && state !== "success" && state !== "review" && state !== "saving" && (
         <div className="space-y-2">
           <button
             onClick={handleProcess}
@@ -539,5 +539,5 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "kit
 }
 
 function ManualAddPanel() {
-  return <div className="text-sm text-slate-500">Manuel ekleme paneli (mevcut hali korunur).</div>;
+  return <div className="text-sm text-slate-500">Manuel ekleme paneli.</div>;
 }
