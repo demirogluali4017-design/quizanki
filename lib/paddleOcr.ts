@@ -6,8 +6,18 @@ export type OcrWordCandidate = {
   rawLine: string;
 };
 
+export type OcrBox = {
+  text: string;
+  confidence: number;
+  bbox: { x0: number; y0: number; x1: number; y1: number };
+};
+
 type Worker = {
-  recognize: (image: File | Blob | string) => Promise<{ data: { text?: string } }>;
+  recognize: (
+    image: File | Blob | string,
+    options?: unknown,
+    output?: { text?: boolean; blocks?: boolean }
+  ) => Promise<{ data: { text?: string; blocks?: unknown[] } }>;
   terminate: () => Promise<void>;
 };
 
@@ -38,6 +48,47 @@ export async function recognizeWithPaddle(image: File | Blob): Promise<string> {
   return result.data.text ?? "";
 }
 
+/** Bounding box’lu kelimeleri döner (Quizlet tarzı seçim için). */
+export async function recognizeWithPaddleBoxes(image: File | Blob): Promise<OcrBox[]> {
+  if (typeof window === "undefined") {
+    throw new Error("Bu işlem sadece tarayıcıda çalışır.");
+  }
+
+  const worker = await getWorker();
+  const result = await worker.recognize(image, undefined, { text: true, blocks: true });
+  const boxes: OcrBox[] = [];
+
+  const blocks = (result.data.blocks ?? []) as Array<{
+    paragraphs?: Array<{
+      lines?: Array<{
+        words?: Array<{
+          text?: string;
+          confidence?: number;
+          bbox?: { x0: number; y0: number; x1: number; y1: number };
+        }>;
+      }>;
+    }>;
+  }>;
+
+  for (const block of blocks) {
+    for (const para of block.paragraphs ?? []) {
+      for (const line of para.lines ?? []) {
+        for (const word of line.words ?? []) {
+          const text = (word.text ?? "").trim();
+          if (text.length < 2 || !word.bbox) continue;
+          boxes.push({
+            text,
+            confidence: word.confidence ?? 0,
+            bbox: word.bbox,
+          });
+        }
+      }
+    }
+  }
+
+  return boxes;
+}
+
 /** Ham metinden kelime adayları çıkarır. */
 export function extractCandidatesFromOcr(text: string): OcrWordCandidate[] {
   const lines = text
@@ -49,7 +100,7 @@ export function extractCandidatesFromOcr(text: string): OcrWordCandidate[] {
   const seen = new Set<string>();
 
   for (const line of lines) {
-    const tokens = line.split(/[\s,;:.!?()\[\]"'—–]+/).filter((t) => t.length >= 3 && /[a-zA-Zà-ÿÀ-ÿ]/.test(t));
+    const tokens = line.split(/[\s,;:.!?()\[\]\"'—–]+/).filter((t) => t.length >= 3 && /[a-zA-Zà-ÿÀ-ÿ]/.test(t));
 
     for (const token of tokens) {
       const clean = token.replace(/^[^a-zA-Zà-ÿÀ-ÿ]+|[^a-zA-Zà-ÿÀ-ÿ]+$/g, "");
