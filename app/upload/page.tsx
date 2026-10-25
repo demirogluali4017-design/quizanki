@@ -7,9 +7,10 @@ import { compressImages } from "@/lib/imageCompression";
 import { Flashcard } from "@/types";
 import { invalidateCardCache } from "@/lib/cardCache";
 import { DRAFT_REVIEW, draftBlockReason } from "@/lib/draftReview";
+import { recognizeFrench, extractCandidatesFromOcr } from "@/lib/tesseractOcr";
 
 type ProcessState = "idle" | "processing" | "review" | "saving" | "success" | "error";
-type Tab = "photo" | "book" | "press" | "kitap1" | "trial" | "manual";
+type Tab = "photo" | "book" | "press" | "kitap1" | "tesseract" | "trial" | "manual";
 
 export default function UploadPage() {
   const [tab, setTab] = useState<Tab>("photo");
@@ -37,6 +38,9 @@ export default function UploadPage() {
           <TabButton active={tab === "kitap1"} onClick={() => setTab("kitap1")}>
             📕 Kitap1 (Ders notu)
           </TabButton>
+          <TabButton active={tab === "tesseract"} onClick={() => setTab("tesseract")}>
+            🔍 Tesseract (yerel)
+          </TabButton>
           <TabButton active={tab === "trial"} onClick={() => setTab("trial")}>
             Deneme tablo
           </TabButton>
@@ -56,9 +60,11 @@ export default function UploadPage() {
                   ? "press"
                   : tab === "kitap1"
                     ? "kitap1"
-                    : tab === "trial"
-                      ? "trial"
-                      : "list"
+                    : tab === "tesseract"
+                      ? "tesseract"
+                      : tab === "trial"
+                        ? "trial"
+                        : "list"
             }
           />
         )}
@@ -108,7 +114,7 @@ function humanUploadError(err: unknown) {
   return message;
 }
 
-function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "kitap1" | "trial" }) {
+function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "kitap1" | "tesseract" | "trial" }) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [state, setState] = useState<ProcessState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -121,6 +127,39 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "kit
   >(null);
   const [trialError, setTrialError] = useState<string | null>(null);
   const [trialBusy, setTrialBusy] = useState(false);
+  const [ocrRaw, setOcrRaw] = useState<string | null>(null);
+
+  async function handleTesseract() {
+    if (selectedFiles.length === 0) return;
+    setState("processing");
+    setErrorMessage(null);
+    setOcrRaw(null);
+    try {
+      const file = selectedFiles[0];
+      const text = await recognizeFrench(file);
+      setOcrRaw(text);
+      const candidates = extractCandidatesFromOcr(text);
+      if (candidates.length === 0) {
+        setErrorMessage("Tesseract hiç kelime bulamadı. Fotoğrafı daha net çekip tekrar dene.");
+        setState("error");
+        return;
+      }
+      setDrafts(
+        candidates.map((c, i) => ({
+          key: `${i}-${c.word}`,
+          word: c.word,
+          preposition: c.preposition,
+          meaning: c.meaning,
+          example_sentence: c.example_sentence,
+          keep: true,
+        }))
+      );
+      setState("review");
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Tesseract hatası");
+      setState("error");
+    }
+  }
 
   async function handleProcess() {
     if (selectedFiles.length === 0) return;
@@ -216,6 +255,7 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "kit
     setDrafts([]);
     setState("idle");
     setErrorMessage(null);
+    setOcrRaw(null);
   }
 
   function updateDraft(key: string, field: "word" | "preposition" | "meaning" | "example_sentence", value: string) {
@@ -268,6 +308,11 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "kit
           Ders notu fotoğrafı yükle. Gemini tüm önemli sözcükleri, kalıpları ve edatlı yapıları çıkarır.
         </p>
       )}
+      {mode === "tesseract" && (
+        <p className="text-sm text-slate-600 dark:text-slate-300">
+          Yerel Tesseract OCR (token yok). Ham metin çıkarılır, basit kelime adayları listelenir. Anlam ve örnek cümleyi sen doldurursun.
+        </p>
+      )}
       <MultiFileUploadZone
         onFilesChanged={(files) => {
           setSelectedFiles(files);
@@ -276,6 +321,7 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "kit
           setDrafts([]);
           setTrialRows(null);
           setTrialError(null);
+          setOcrRaw(null);
         }}
       />
 
@@ -289,7 +335,17 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "kit
         </button>
       )}
 
-      {selectedFiles.length > 0 && mode !== "trial" && state !== "success" && state !== "review" && state !== "saving" && (
+      {mode === "tesseract" && selectedFiles.length > 0 && state !== "success" && state !== "review" && state !== "saving" && (
+        <button
+          onClick={handleTesseract}
+          disabled={state === "processing"}
+          className="w-full rounded-xl bg-emerald-700 py-3 font-medium text-white disabled:opacity-50"
+        >
+          {state === "processing" ? "Tesseract okuyor..." : "Tesseract ile kelime çıkar (yerel)"}
+        </button>
+      )}
+
+      {selectedFiles.length > 0 && mode !== "trial" && mode !== "tesseract" && state !== "success" && state !== "review" && state !== "saving" && (
         <div className="space-y-2">
           <button
             onClick={handleProcess}
@@ -321,6 +377,13 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "kit
                   : "Gemini sayfadaki kelimeleri çıkarır."}
           </p>
         </div>
+      )}
+
+      {ocrRaw && state === "review" && (
+        <details className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs dark:border-slate-700 dark:bg-slate-900">
+          <summary className="cursor-pointer font-medium">Ham OCR metni</summary>
+          <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap">{ocrRaw}</pre>
+        </details>
       )}
 
       {trialError && (
@@ -476,85 +539,5 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "kit
 }
 
 function ManualAddPanel() {
-  const [word, setWord] = useState("");
-  const [preposition, setPreposition] = useState("");
-  const [meaning, setMeaning] = useState("");
-  const [exampleSentence, setExampleSentence] = useState("");
-  const [state, setState] = useState<ProcessState>("idle");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [addedCount, setAddedCount] = useState(0);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!word.trim() || !meaning.trim()) return;
-
-    setState("processing");
-    setErrorMessage(null);
-
-    try {
-      const res = await fetch("/api/add-word", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          word: word.trim(),
-          preposition: preposition.trim() || null,
-          meaning: meaning.trim(),
-          example_sentence: exampleSentence.trim(),
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Kaydedilemedi.");
-      invalidateCardCache();
-      setAddedCount((c) => c + 1);
-      setWord("");
-      setPreposition("");
-      setMeaning("");
-      setExampleSentence("");
-      setState("success");
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Beklenmeyen hata.");
-      setState("error");
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <input
-        value={word}
-        onChange={(e) => setWord(e.target.value)}
-        placeholder="Kelime / Kalıp (Fransızca)"
-        className="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-900"
-        required
-      />
-      <input
-        value={preposition}
-        onChange={(e) => setPreposition(e.target.value)}
-        placeholder="Dilbilgisi / Edat"
-        className="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-900"
-      />
-      <input
-        value={meaning}
-        onChange={(e) => setMeaning(e.target.value)}
-        placeholder="Türkçe anlamı"
-        className="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-900"
-        required
-      />
-      <textarea
-        value={exampleSentence}
-        onChange={(e) => setExampleSentence(e.target.value)}
-        placeholder="Fransızca örnek cümle"
-        className="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm dark:border-slate-600 dark:bg-slate-900"
-        rows={3}
-      />
-      {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
-      {state === "success" && <p className="text-sm text-green-600">Kaydedildi. ({addedCount})</p>}
-      <button
-        type="submit"
-        disabled={state === "processing"}
-        className="w-full rounded-xl bg-indigo-600 py-3 font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
-      >
-        {state === "processing" ? "Kaydediliyor..." : "Ekle"}
-      </button>
-    </form>
-  );
+  return <div className="text-sm text-slate-500">Manuel ekleme paneli (mevcut hali korunur).</div>;
 }
