@@ -137,10 +137,10 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "kit
     try {
       const file = selectedFiles[0];
       const text = await recognizeWithTransformers(file);
-      setOcrRaw(text);
+      setOcrRaw(text || "(model boş metin döndü)");
       const candidates = extractCandidatesFromOcr(text);
       if (candidates.length === 0) {
-        setErrorMessage("Model hiç kelime bulamadı. Fotoğrafı daha net çekip tekrar dene.");
+        setErrorMessage("Model şeritlerden kelime çıkaramadı. Ham metne bak veya fotoğrafı daha yakından çek.");
         setState("error");
         return;
       }
@@ -310,7 +310,7 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "kit
       )}
       {mode === "transformers" && (
         <p className="text-sm text-slate-600 dark:text-slate-300">
-          Yerel Transformers.js (TrOCR, token yok). İlk kullanımda model indirilir. Anlam ve örnek cümleyi sen doldurursun.
+          Yerel Transformers.js (TrOCR şerit). İlk kullanımda model indirilir. Anlam ve örnek cümleyi sen doldurursun.
         </p>
       )}
       <MultiFileUploadZone
@@ -341,7 +341,7 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "kit
           disabled={state === "processing"}
           className="w-full rounded-xl bg-violet-700 py-3 font-medium text-white disabled:opacity-50"
         >
-          {state === "processing" ? "Model okuyor..." : "Transformers ile kelime çıkar (yerel)"}
+          {state === "processing" ? "Model şeritleri okuyor..." : "Transformers ile kelime çıkar (yerel)"}
         </button>
       )}
 
@@ -379,8 +379,8 @@ function PhotoUploadPanel({ mode }: { mode: "list" | "textbook" | "press" | "kit
         </div>
       )}
 
-      {ocrRaw && state === "review" && (
-        <details className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs dark:border-slate-700 dark:bg-slate-900">
+      {ocrRaw && (state === "review" || state === "error") && (
+        <details open className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs dark:border-slate-700 dark:bg-slate-900">
           <summary className="cursor-pointer font-medium">Ham OCR metni</summary>
           <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap">{ocrRaw}</pre>
         </details>
