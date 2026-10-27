@@ -105,6 +105,12 @@ async function Dashboard() {
           Çalış
         </Link>
         <Link
+          href="/istatistik"
+          className="mt-3 flex h-12 items-center justify-center rounded-xl border border-slate-300 text-sm font-medium text-slate-700"
+        >
+          İstatistik
+        </Link>
+        <Link
           href="/read"
           className="mt-3 flex h-12 items-center justify-center rounded-xl border border-slate-300 text-sm font-medium text-slate-700"
         >
