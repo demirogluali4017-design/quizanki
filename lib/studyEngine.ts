@@ -1,4 +1,4 @@
-import {
+import { getDaysUntilExam, getExamAdjustedLimits } from "@/lib/examMode";
 import { getDaysUntilExam, getExamAdjustedLimits } from "@/lib/examMode";
   CardStatus,
   DailyPackage,
