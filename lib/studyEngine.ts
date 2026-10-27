@@ -1,5 +1,5 @@
 import { getDaysUntilExam, getExamAdjustedLimits } from "@/lib/examMode";
-import { getDaysUntilExam, getExamAdjustedLimits } from "@/lib/examMode";
+import {
   CardStatus,
   DailyPackage,
   Flashcard,
@@ -9,6 +9,7 @@ import { getDaysUntilExam, getExamAdjustedLimits } from "@/lib/examMode";
   SM2Rating,
   StudyQuestion,
 } from "@/types";
+
 
 // ============================================================
 // 1) ÖZ-DEĞERLENDİRME → SM-2 RATING EŞLEMESİ
