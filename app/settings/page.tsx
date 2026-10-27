@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/lib/ThemeProvider";
 import { getTTSSettings, setTTSSettings } from "@/components/SpeakButton";
 import { Flashcard, WordGroup } from "@/types";
+import { getExamDate, setExamDate, getDaysUntilExam } from "@/lib/examMode";
 
 export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
@@ -21,12 +22,17 @@ export default function SettingsPage() {
   const [exportNote, setExportNote] = useState<string | null>(null);
   const [testingMail, setTestingMail] = useState(false);
   const [mailNote, setMailNote] = useState<string | null>(null);
+  const [examDate, setExamDateState] = useState("");
+  const [daysLeft, setDaysLeft] = useState<number | null>(null);
 
   useEffect(() => {
     const s = getTTSSettings();
     setRate(s.rate);
     setPitch(s.pitch);
     setMounted(true);
+    const ed = getExamDate();
+    if (ed) setExamDateState(ed.toISOString().slice(0, 10));
+    setDaysLeft(getDaysUntilExam());
 
     async function loadGoals() {
       const { data } = await supabase
@@ -252,6 +258,49 @@ export default function SettingsPage() {
                 Bu hedef tüm cihazlarda ortak — ana sayfadaki ilerleme çubukları buna göre dolar.
               </p>
             </>
+          )}
+        </section>
+
+        
+        {/* Sınav Modu */}
+        <section className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-6 space-y-4">
+          <h2 className="font-semibold text-slate-800 dark:text-slate-100">📅 Sınav Modu</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Sınav tarihi girersen günlük yeni kelime kotası düşer, tekrarlar öncelikli olur. Mevcut interval’lar ve SM-2 hiç değişmez.
+          </p>
+          <input
+            type="date"
+            value={examDate}
+            onChange={(e) => setExamDateState(e.target.value)}
+            className="w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                if (examDate) {
+                  setExamDate(new Date(examDate));
+                  setDaysLeft(getDaysUntilExam());
+                }
+              }}
+              className="flex-1 rounded-lg bg-indigo-600 text-white font-medium py-2 text-sm"
+            >
+              Kaydet
+            </button>
+            <button
+              onClick={() => {
+                setExamDate(null);
+                setExamDateState("");
+                setDaysLeft(null);
+              }}
+              className="flex-1 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium py-2 text-sm"
+            >
+              Temizle
+            </button>
+          </div>
+          {daysLeft !== null && (
+            <p className="text-sm text-emerald-600 dark:text-emerald-400">
+              Sınava {daysLeft} gün kaldı. Tekrar öncelikli mod aktif.
+            </p>
           )}
         </section>
 
