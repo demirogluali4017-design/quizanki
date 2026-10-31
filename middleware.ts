@@ -29,7 +29,7 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isPublic = path === "/login" || path === "/";
+  const isPublic = path === "/login" || path === "/" || path === "/fr";
   const isCron = path.startsWith("/api/send-reminder");
   const owner = process.env.OWNER_EMAIL?.trim().toLowerCase();
   const allowed = Boolean(user) && (!owner || user?.email?.toLowerCase() === owner);
