@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 const ITEMS = [
-  { href: "/fr", label: "Ana", icon: HomeIcon },
+  { href: "/", label: "Ana", icon: HomeIcon },
   { href: "/upload", label: "Yükle", icon: UploadIcon },
   { href: "/study", label: "Çalış", icon: StudyIcon },
   { href: "/words", label: "Kelimeler", icon: WordsIcon },
@@ -15,15 +15,14 @@ const ITEMS = [
 
 export default function BottomNav() {
   const path = usePathname();
-  const [authed, setAuthed] = useState(path !== "/fr");
+  const [authed, setAuthed] = useState(path !== "/");
 
   useEffect(() => {
-    if (path !== "/fr") return;
+    if (path !== "/") return;
     supabase.auth.getUser().then(({ data }) => setAuthed(Boolean(data.user)));
   }, [path]);
 
-  // "/" dil seçici, "/en" ayrı İngilizce paketi: FR alt menüsü gösterilmez
-  if (path === "/" || path.startsWith("/en") || path === "/login" || !authed) return null;
+  if (path === "/login" || !authed) return null;
 
   return (
     <>
@@ -31,7 +30,7 @@ export default function BottomNav() {
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/80 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
         <ul className="mx-auto flex max-w-lg items-end justify-between px-1 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-1">
           {ITEMS.map((item) => {
-            const active = item.href === "/fr" ? path === "/fr" : path.startsWith(item.href);
+            const active = item.href === "/" ? path === "/" : path.startsWith(item.href);
             const Icon = item.icon;
             return (
               <li key={item.href} className="flex-1">
