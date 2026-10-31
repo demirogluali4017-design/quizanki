@@ -21,7 +21,7 @@ export default function UploadPage() {
       <div className="max-w-3xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">⬆️ Kart Yükle</h1>
-          <Link href="/" className="text-sm text-indigo-600 hover:underline">
+          <Link href="/fr" className="text-sm text-indigo-600 hover:underline">
             ← Ana sayfaya dön
           </Link>
         </div>
