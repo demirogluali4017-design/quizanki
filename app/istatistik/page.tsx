@@ -78,7 +78,7 @@ export default async function IstatistikPage() {
       <div className="mx-auto max-w-[420px] px-5 pb-16 pt-6">
         {/* Header */}
         <div className="mb-10 flex items-center justify-between">
-          <Link href="/" className="text-sm text-[#7dcea0] hover:text-white transition">
+          <Link href="/fr" className="text-sm text-[#7dcea0] hover:text-white transition">
             ← Geri
           </Link>
           <span className="text-[11px] font-medium tracking-[0.2em] uppercase text-[#5d8a72]">
